@@ -1,0 +1,2731 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model Workspace {
+  id            String          @id @default(uuid())
+  name          String
+  description   String?
+  slug          String          @unique // For URL-friendly workspace identification
+  members       WorkspaceUser[] @relation("WorkspaceMembers")
+  projects      Project[]       @relation("WorkspaceProjects")
+  projectStages ProjectStage[]  @relation("WorkspaceProjectStages")
+  leads         Lead[]          @relation("WorkspaceLeads")
+  leadStages    LeadStage[]     @relation("WorkspaceLeadStages")
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Global Accounting Settings (single row table)
+model AccountingSettings {
+  id                       Int      @id @default(1)
+  defaultCustomerAccountId Int?
+  defaultCustomerAccount   Account? @relation("DefaultCustomerAccount", fields: [defaultCustomerAccountId], references: [id])
+  defaultSupplierAccountId Int?
+  defaultSupplierAccount   Account? @relation("DefaultSupplierAccount", fields: [defaultSupplierAccountId], references: [id])
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@map("accounting_settings")
+}
+
+model WorkspaceUser {
+  id          String        @id @default(uuid())
+  workspaceId String
+  workspace   Workspace     @relation("WorkspaceMembers", fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation("UserWorkspaces", fields: [userId], references: [id], onDelete: Cascade)
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+
+  @@unique([workspaceId, userId])
+}
+
+model User {
+  id                            String                  @id @default(uuid())
+  name                          String
+  password                      String
+  email                         String                  @unique
+  phone                         String                  @unique
+  img                           String?
+  workspaces                    WorkspaceUser[]         @relation("UserWorkspaces")
+  assignedTasks                 Task[]                  @relation("TaskAssignees")
+  createdTasks                  Task[]                  @relation("TaskCreator")
+  projects                      Project[]               @relation("ProjectOwner")
+  leads                         Lead[]                  @relation("LeadSalesMan")
+  loginEvents                   LoginEvent[]
+  actions                       ActionHistory[]         @relation("ActionUser")
+  comments                      Comment[]               @relation("UserComments")
+  taggedComments                Comment[]               @relation("CommentTaggedUsers")
+  uploadedFiles                 File[]                  @relation("UserFiles")
+  type                          PartnerType?
+  projectsContributions         Project[]               @relation("ProjectContributors")
+  leadActivities                LeadActivity[]          @relation("LeadActivities")
+  employee                      Employee?               @relation("EmployeeUser")
+  leaves                        Leave[]                 @relation("LeaveApprovals")
+  salariesIPaid                 Salary[]                @relation("SalaryPaidBy")
+  createdSalesInvoices          SalesInvoice[]          @relation("CreatedSalesInvoices")
+  createdPurchaseInvoices       PurchaseInvoice[]       @relation("CreatedPurchaseInvoices")
+  createdPurchaseReturnInvoices PurchaseReturnInvoice[] @relation("CreatedPurchaseReturnInvoices")
+  createdSalesReturnInvoices    SalesReturnInvoice[]    @relation("CreatedSalesReturnInvoices")
+  warehouseTransactions         WarehouseTransaction[]  @relation("WarehouseTransactions")
+  uploadedEmployeeDocuments     EmployeeDocument[]      @relation("UploadedEmployeeDocuments")
+  issuedDisciplinaryActions     DisciplinaryAction[]    @relation("IssuedDisciplinaryActions")
+  reviewedEmployeeRequests      EmployeeRequest[]       @relation("ReviewedEmployeeRequests")
+  processedEmployeeExits        EmployeeExit[]          @relation("ProcessedEmployeeExits")
+  // Sales
+  createdSales                  Sale[]                  @relation("SaleCreator")
+  // Dynamic role assignment
+  userRoles                     UserRole[]              @relation("UserRoles")
+
+  // Real Estate additions
+  entityAccesses              UserEntityAccess[]   @relation("UserEntityAccesses")
+  uploadedContractAttachments ContractAttachment[] @relation("ContractAttachmentUploader")
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id             String        @id @default(uuid())
+  name           String
+  description    String?
+  startDate      DateTime?
+  endDate        DateTime?
+  order          Int?          @default(0) // Order within the project stage or workspace
+  workspaceId    String // Required: Every project must belong to a workspace
+  workspace      Workspace     @relation("WorkspaceProjects", fields: [workspaceId], references: [id], onDelete: Cascade)
+  ownerId        String
+  contributors   User[]        @relation("ProjectContributors")
+  owner          User          @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  tasks          Task[]        @relation("ProjectTasks")
+  files          File[]        @relation("ProjectFiles")
+  projectStageId String? // Optional: Projects can be unstaged
+  projectStage   ProjectStage? @relation("ProjectStageProjects", fields: [projectStageId], references: [id], onDelete: SetNull)
+  taskStages     TaskStage[]   @relation("ProjectTaskStages") // Project-specific task stages
+  isDeleted      Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model Task {
+  id          String       @id @default(uuid())
+  parentId    String?
+  parent      Task?        @relation("TaskParent", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  subtasks    Task[]       @relation("TaskParent")
+  title       String
+  description String?
+  startDate   DateTime?
+  endDate     DateTime?
+  isDone      Boolean?     @default(false)
+  order       Int?         @default(0) // Order within the task stage
+  status      TaskStatus   @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  assignees   User[]       @relation("TaskAssignees")
+  comments    Comment[]    @relation("TaskComments")
+  files       File[]       @relation("TaskFiles")
+  projectId   String
+  project     Project      @relation("ProjectTasks", fields: [projectId], references: [id], onDelete: Cascade)
+  taskStageId String?
+  taskStage   TaskStage?   @relation("TaskStageTasks", fields: [taskStageId], references: [id], onDelete: Cascade)
+  timeStamps  TimeStamp[]  @relation("TaskTimeStamps")
+  createdById String?
+  createdBy   User?        @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  isDeleted   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model TimeStamp {
+  id          String   @id @default(uuid())
+  startDate   DateTime
+  endDate     DateTime
+  description String?
+  isDeleted   Boolean  @default(false)
+  taskId      String
+  task        Task     @relation("TaskTimeStamps", fields: [taskId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Comment {
+  id          String   @id @default(uuid())
+  content     String
+  taskId      String
+  task        Task     @relation("TaskComments", fields: [taskId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  authorId    String
+  author      User     @relation("UserComments", fields: [authorId], references: [id], onDelete: Cascade)
+  taggedUsers User[]   @relation("CommentTaggedUsers")
+  files       File[]   @relation("CommentFiles")
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model File {
+  id           String @id @default(uuid())
+  originalName String // Original filename uploaded by user
+  filename     String // Stored filename (usually UUID + extension)
+  mimetype     String // MIME type of the file
+  size         Int // File size in bytes
+  url          String // Full URL to access the file
+  key          String // Cloudflare R2 object key/path
+  uploadedById String
+  uploadedBy   User   @relation("UserFiles", fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  // Polymorphic relationships - a file can belong to one of these entities
+  projectId String?
+  project   Project? @relation("ProjectFiles", fields: [projectId], references: [id], onDelete: Cascade)
+  taskId    String?
+  task      Task?    @relation("TaskFiles", fields: [taskId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  commentId String?
+  comment   Comment? @relation("CommentFiles", fields: [commentId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectStage {
+  id          String    @id @default(uuid())
+  name        String
+  order       Int?      @default(0)
+  description String?
+  color       String? // For UI visualization
+  workspaceId String // Each stage belongs to a workspace
+  workspace   Workspace @relation("WorkspaceProjectStages", fields: [workspaceId], references: [id], onDelete: Cascade)
+  projects    Project[] @relation("ProjectStageProjects") // One project stage can have many projects
+  isDeleted   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([workspaceId, order])
+}
+
+model TaskStage {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  order       Int?
+  color       String? // For UI visualization
+  projectId   String // Project-specific task stages
+  project     Project  @relation("ProjectTaskStages", fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]   @relation("TaskStageTasks") // One task stage can have many tasks
+  isDefault   Boolean  @default(false)
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, order])
+}
+
+model ActionHistory {
+  id          String   @id @default(uuid())
+  actionType  String // CREATE, UPDATE, DELETE, ASSIGN, etc
+  entityType  String // USER, PROJECT, TASK, STAGE, etc
+  entityId    String // ID of the affected entity
+  details     Json? // Extra info about the action
+  link        String? // Link to the affected entity
+  performedBy String?
+  user        User?    @relation("ActionUser", fields: [performedBy], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model LoginEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  ipAddress String?
+  device    String? // e.g. iPhone, Chrome on Windows
+  location  String? // e.g. "Baghdad, Iraq"
+  country   String? // e.g. "Iraq"
+  city      String? // e.g. "Baghdad"
+  state     String? // e.g. "Baghdad"
+  zip       String? // e.g. "10000"
+  latitude  Float? // e.g. 33.3152
+  longitude Float? // e.g. 44.3661
+  userAgent String? // Full user-agent string
+  createdAt DateTime @default(now())
+}
+
+// ===== ACCOUNTING =====
+model Client {
+  id          Int        @id @default(autoincrement())
+  name        String
+  phone       String?
+  address     String?
+  dateOfBirth DateTime? // تاريخ الميلاد
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  type        ClientType @default(SUPPLIER)
+
+  // No direct balance tracking - الرصيد يُحسب من الحسابات المحاسبية
+
+  // Account relationship - العلاقة مع الحساب
+  accountId Int?
+  account   Account? @relation("ClientAccount", fields: [accountId], references: [id])
+
+  // Relationships
+  transactions     Transaction[] // المعاملات المرتبطة بالعميل
+  transactionLines TransactionLine[] // سطور المعاملات المرتبطة بالعميل
+  salesInvoices    SalesInvoice[] // فواتير البيع (للعملاء)
+  purchaseInvoices PurchaseInvoice[] // فواتير الشراء (للموردين)
+  sales            Sale[] // Sales / Quotations
+
+  @@map("clients")
+}
+
+enum ClientType {
+  CUSTOMER
+  SUPPLIER
+}
+
+// ===== ACCOUNTING ENUMS =====
+enum AccountType {
+  ASSET // الأصول: صندوق، عملاء، مخزون
+  LIABILITY // الالتزامات: الموردين، الضرائب
+  EQUITY // حقوق الملكية
+  REVENUE // الإيرادات: المبيعات
+  EXPENSE // المصروفات: الشحن، الرواتب، العمولات
+}
+
+model Currency {
+  id            Int      @id @default(autoincrement())
+  name          String   @unique // e.g., "US Dollar", "Iraqi Dinar", "Euro"
+  code          String   @unique // e.g., "USD", "IQD", "EUR"
+  symbol        String // e.g., "$", "د.ع", "€"
+  rate          Decimal  @default(1.0) @db.Decimal(15, 4) // Exchange rate relative to main currency
+  isMain        Boolean  @default(false) // Only one currency can be main
+  decimalPlaces Int      @default(2) // Number of decimal places for this currency
+  isActive      Boolean  @default(true)
+  isDeleted     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relationships
+  accounts               Account[]               @relation("AccountCurrency")
+  salesInvoices          SalesInvoice[]          @relation("SalesInvoiceCurrency")
+  purchaseInvoices       PurchaseInvoice[]       @relation("PurchaseInvoiceCurrency")
+  purchaseReturnInvoices PurchaseReturnInvoice[] @relation("PurchaseReturnInvoiceCurrency")
+  salesReturnInvoices    SalesReturnInvoice[]    @relation("SalesReturnInvoiceCurrency")
+
+  @@map("currencies")
+}
+
+model Account {
+  id         Int         @id @default(autoincrement())
+  name       String
+  type       AccountType
+  code       String?
+  isCash     Boolean     @default(false)
+  // العملة
+  currencyId Int?
+  currency   Currency?   @relation("AccountCurrency", fields: [currencyId], references: [id])
+
+  // Hierarchical structure for accounts
+  parentId Int?
+  parent   Account?  @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children Account[] @relation("AccountHierarchy")
+
+  // العلاقات
+  entries       TransactionLine[]
+  linkedClients Client[]          @relation("ClientAccount")
+
+  // علاقات تكوين الحسابات المحاسبية للفواتير
+  debitConfigs  InvoiceAccountingConfig[] @relation("DebitAccountConfigs")
+  creditConfigs InvoiceAccountingConfig[] @relation("CreditAccountConfigs")
+
+  // علاقات تقسيمات الدفع
+  invoicePayments InvoicePayment[] @relation("InvoicePaymentAccounts")
+
+  // Default account relations for accounting settings
+  defaultCustomerSettings AccountingSettings[] @relation("DefaultCustomerAccount")
+  defaultSupplierSettings AccountingSettings[] @relation("DefaultSupplierAccount")
+
+  // الحقول الأساسية
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("accounts")
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @default(now())
+  description String?
+
+  // نوع المعاملة لتسهيل التصفية والاستعلام
+  transactionType TransactionType @default(GENERAL)
+
+  // ربط مع العميل
+  clientId Int?
+  client   Client? @relation(fields: [clientId], references: [id])
+
+  // ربط مع الفواتير
+  salesInvoiceId Int?
+  salesInvoice   SalesInvoice? @relation(fields: [salesInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  purchaseInvoiceId Int?
+  purchaseInvoice   PurchaseInvoice? @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  purchaseReturnInvoiceId Int?
+  purchaseReturnInvoice   PurchaseReturnInvoice? @relation(fields: [purchaseReturnInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  salesReturnInvoiceId Int?
+  salesReturnInvoice   SalesReturnInvoice? @relation(fields: [salesReturnInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // العلاقات
+  entries TransactionLine[]
+
+  // علاقات تقسيمات الدفع
+  invoicePayments InvoicePayment[] @relation("InvoicePaymentTransactions")
+
+  // الحقول الأساسية
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("transactions")
+}
+
+model TransactionLine {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @default(now())
+  description String?
+  debit       Float    @default(0)
+  credit      Float    @default(0)
+
+  // العلاقات
+  accountId     Int
+  account       Account     @relation(fields: [accountId], references: [id])
+  transactionId Int
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // ربط مع العميل (اختياري)
+  clientId Int?
+  client   Client? @relation(fields: [clientId], references: [id])
+
+  // الحقول الأساسية
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("transaction_lines")
+}
+
+// ===== INVOICE ENUMS =====
+enum InvoiceStatus {
+  UNPAID // غير مدفوعة
+  PARTIAL // مدفوعة جزئياً
+  PAID // مدفوعة بالكامل
+  CANCELLED // ملغاة
+  OVERDUE // متأخرة السداد
+}
+
+enum PaymentType {
+  CASH // نقدي
+  CREDIT // آجل (deferred payment)
+  CARD // بطاقة (card payment - instant)
+  BANK_TRANSFER // تحويل بنكي (bank transfer - instant)
+}
+
+enum TransactionType {
+  PAYMENT // مدفوع (للموردين)
+  RECEIPT // مقبوض (من العملاء)
+  INVOICE // فاتورة
+  GENERAL // عام
+}
+
+enum PartnerType {
+  CUSTOMER
+  SUPPLIER
+  BOTH
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+// ===== CRM MODELS =====
+
+model Lead {
+  id             String         @id @default(uuid())
+  name           String
+  order          Int?           @default(0)
+  email          String?
+  phone          String?
+  dateOfBirth    DateTime? // تاريخ الميلاد
+  description    String?
+  companyName    String?
+  industry       String?
+  website        String?
+  source         String? // Where the lead came from (website, referral, etc.)
+  salesManId     String?
+  salesMan       User?          @relation("LeadSalesMan", fields: [salesManId], references: [id], onDelete: SetNull)
+  employeeCount  Int?
+  leadActivities LeadActivity[]
+  revenue        Float?
+  status         LeadStatus     @default(NEW)
+  isCompany      Boolean        @default(false)
+  workspaceId    String
+  workspace      Workspace      @relation("WorkspaceLeads", fields: [workspaceId], references: [id], onDelete: Cascade)
+  stageId        String?
+  stage          LeadStage?     @relation("LeadStageLeads", fields: [stageId], references: [id], onDelete: SetNull)
+
+  // Real Estate relationships - علاقات العقارات
+  propertyRequests  PropertyRequest[] // طلبات العقارات من العميل المحتمل
+  propertyContracts PropertyContract[] // العقود المبرمة مع العميل المحتمل
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LeadActivity {
+  id           String       @id @default(uuid())
+  leadId       String
+  lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  activityType ActivityType
+  meetingLink  String?
+  activityDate DateTime
+  assignedToId String?
+  assignedTo   User?        @relation("LeadActivities", fields: [assignedToId], references: [id], onDelete: SetNull)
+  description  String?
+  isDone       Boolean?     @default(false)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+enum ActivityType {
+  CALL
+  MEETING
+  EMAIL
+  WHATSAPP
+  SMS
+  VISIT
+  TASK
+  NOTE
+  OTHER
+}
+
+model LeadStage {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  order       Int?      @default(0)
+  color       String? // For UI visualization
+  workspaceId String
+  workspace   Workspace @relation("WorkspaceLeadStages", fields: [workspaceId], references: [id], onDelete: Cascade)
+  leads       Lead[]    @relation("LeadStageLeads")
+  isDeleted   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([workspaceId, order])
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL_SENT
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+  ON_HOLD
+}
+
+// Department Tables
+model Department {
+  id                     String                  @id @default(uuid())
+  name                   String
+  description            String?
+  parentId               String?
+  parent                 Department?             @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children               Department[]            @relation("DepartmentHierarchy")
+  employees              Employee[]              @relation("EmployeeDepartment")
+  purchaseReturnInvoices PurchaseReturnInvoice[] @relation("PurchaseReturnInvoiceDepartment")
+  salesReturnInvoices    SalesReturnInvoice[]    @relation("SalesReturnInvoiceDepartment")
+
+  // System Fields
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Employee Tables
+model Employee {
+  id            String  @id @default(uuid())
+  fingerPrintId String?
+
+  // Personal Information
+  firstName          String
+  lastName           String?
+  leaves             Leave[]          @relation("EmployeeLeaves")
+  phone              String?
+  alternatePhone     String?
+  dateOfBirth        DateTime?
+  gender             Gender?
+  workingHours       Int?             @default(8)
+  daysToWorkPerMonth Int?             @default(26)
+  // Address Information
+  address            String?
+  city               String?
+  state              String?
+  country            String?
+  zipCode            String?
+  startWorkingTime   DateTime?
+  endWorkingTime     DateTime?
+  // number of leaves allowed per year
+  leavesAllowed      Int?             @default(21)
+  salaries           Salary[]         @relation("EmployeeSalaries")
+  // Employment Information
+  jobId              String?
+  job                Job?             @relation("EmployeeJob", fields: [jobId], references: [id], onDelete: SetNull)
+  departmentId       String?
+  department         Department?      @relation("EmployeeDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
+  hireDate           DateTime?
+  terminationDate    DateTime?
+  employmentType     EmploymentType   @default(FULL_TIME)
+  employmentStatus   EmploymentStatus @default(ACTIVE)
+
+  // Compensation
+  salary   String? // Monthly salary
+  currency String? @default("IQD")
+
+  // Work Details
+  workLocation WorkLocation? @default(OFFICE) // Office location, remote, hybrid
+  shiftType    ShiftType?    @default(DAY_SHIFT)
+
+  // Emergency Contact
+  emergencyContactName     String?
+  emergencyContactPhone    String?
+  emergencyContactRelation String?
+
+  // Relationships
+  managerId    String?
+  manager      Employee?            @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  subordinates Employee[]           @relation("EmployeeManager")
+  attendances  EmployeeAttendance[] @relation("EmployeeAttendances")
+  // Optional User Account (if employee has system access)
+  userId       String?              @unique
+  user         User?                @relation("EmployeeUser", fields: [userId], references: [id])
+
+  // Documents relationship
+  documents EmployeeDocument[] @relation("EmployeeDocuments")
+
+  // Disciplinary Actions relationship
+  disciplinaryActions DisciplinaryAction[] @relation("EmployeeDisciplinaryActions")
+
+  // Employee Requests relationship
+  requests EmployeeRequest[] @relation("EmployeeRequests")
+
+  // Employee Exit relationship
+  exit EmployeeExit? @relation("EmployeeExit")
+
+  // Employee Benefits relationship
+  benefits EmployeeBenefit[] @relation("EmployeeBenefits")
+
+  // POS Access
+  posPin       String? // 4-6 digit PIN for POS login
+  hasPOSAccess Boolean        @default(false) // Permission to use POS
+  posSessions  POSSession[]   @relation("EmployeePOSSessions")
+  posInvoices  SalesInvoice[] @relation("POSCashierInvoices")
+
+  // System Fields
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([fingerPrintId])
+}
+
+model EmployeeAttendance {
+  id         String           @id @default(uuid())
+  // id from the finger print device, to not duplicate the attendance record
+  sn         Int?             @unique
+  employeeId String
+  employee   Employee         @relation("EmployeeAttendances", fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  date       DateTime
+  status     AttendanceStatus @default(PRESENT)
+  timeIn     DateTime?
+  timeOut    DateTime?
+  notes      String?
+  isDeleted  Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+}
+
+model Leave {
+  id           String      @id @default(uuid())
+  employeeId   String
+  employee     Employee    @relation("EmployeeLeaves", fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  leaveType    LeaveType
+  reason       String?
+  startDate    DateTime
+  endDate      DateTime
+  status       LeaveStatus @default(PENDING)
+  approvedById String?
+  approvedBy   User?       @relation("LeaveApprovals", fields: [approvedById], references: [id])
+  isDeleted    Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Salary {
+  id           String    @id @default(uuid())
+  employeeId   String
+  employee     Employee  @relation("EmployeeSalaries", fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  amount       String?
+  // i need a field to know the employee get the salary
+  isSalaryGet  Boolean?  @default(false)
+  // the user who paid the salary
+  paidById     String?
+  paidBy       User?     @relation("SalaryPaidBy", fields: [paidById], references: [id])
+  currency     String?   @default("IQD")
+  currentYear  Int?
+  currentMonth Int?
+  startDate    DateTime?
+  endDate      DateTime?
+  isDeleted    Boolean?  @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+enum LeaveType {
+  VACATION
+  SICK
+  MATERNITY
+  LEAVE
+  HOLIDAY
+  ABSENT
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  REMOTE
+}
+
+model Job {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  employees   Employee[] @relation("EmployeeJob")
+  isDeleted   Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+// Employee Documents - وثائق الموظفين
+model EmployeeDocument {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation("EmployeeDocuments", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  type        DocumentType
+  title       String
+  description String?
+  fileUrl     String // Full URL to access the file
+  fileKey     String // Cloudflare R2 object key/path
+  fileName    String // Original filename
+  fileSize    Int? // File size in bytes
+  mimetype    String? // MIME type
+
+  issueDate  DateTime? // تاريخ الإصدار
+  expiryDate DateTime? // تاريخ انتهاء الصلاحية
+
+  uploadedById String
+  uploadedBy   User   @relation("UploadedEmployeeDocuments", fields: [uploadedById], references: [id])
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([type])
+  @@index([expiryDate])
+}
+
+enum DocumentType {
+  CONTRACT // عقد العمل
+  ID_COPY // نسخة الهوية
+  PASSPORT // جواز السفر
+  CERTIFICATE // الشهادات العلمية
+  RESUME // السيرة الذاتية
+  MEDICAL_REPORT // التقارير الطبية
+  INSURANCE // التأمين
+  WORK_PERMIT // تصريح العمل
+  VISA // تأشيرة
+  DRIVING_LICENSE // رخصة القيادة
+  BANK_DETAILS // البيانات البنكية
+  TAX_DOCUMENTS // الوثائق الضريبية
+  POLICE_CLEARANCE // شهادة حسن السيرة والسلوك
+  REFERENCE_LETTER // خطاب التوصية
+  PERFORMANCE_REVIEW // تقييم الأداء
+  WARNING_LETTER // خطاب إنذار
+  APPRECIATION // خطاب شكر وتقدير
+  OTHER // أخرى
+}
+
+// Employee Disciplinary Actions - الإنذارات والجزاءات
+model DisciplinaryAction {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation("EmployeeDisciplinaryActions", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  type     ActionType
+  severity Severity
+  category ActionCategory @default(BEHAVIORAL)
+
+  title       String // عنوان الإجراء
+  reason      String // السبب
+  description String? // وصف تفصيلي
+  actionDate  DateTime // تاريخ الإجراء
+
+  // تفاصيل الجزاء
+  penalty         String? // نص الجزاء (إنذار، إيقاف، خصم)
+  deductionAmount Decimal? @db.Decimal(15, 2) // مبلغ الخصم (إن وجد)
+  deductionDays   Int? // عدد أيام الخصم من الراتب
+  suspensionDays  Int? // عدد أيام الإيقاف
+
+  // معلومات إضافية
+  evidenceUrl  String? // رابط للأدلة (صور، ملفات)
+  witnessNames String? // أسماء الشهود
+
+  // حالة الإجراء
+  status        ActionStatus @default(ACTIVE)
+  resolvedDate  DateTime? // تاريخ حل الإجراء
+  resolvedNotes String? // ملاحظات الحل
+
+  // من أصدر الإجراء
+  issuedById String
+  issuedBy   User   @relation("IssuedDisciplinaryActions", fields: [issuedById], references: [id])
+
+  // معلومات النظام
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([type])
+  @@index([severity])
+  @@index([status])
+  @@index([actionDate])
+}
+
+enum ActionType {
+  VERBAL_WARNING // إنذار شفهي
+  WRITTEN_WARNING // إنذار كتابي
+  FINAL_WARNING // إنذار نهائي
+  SALARY_DEDUCTION // خصم من الراتب
+  SUSPENSION // إيقاف عن العمل
+  DEMOTION // تخفيض الدرجة
+  TERMINATION // فصل من العمل
+  NOTE // ملاحظة (للتوثيق)
+}
+
+enum Severity {
+  LOW // بسيط
+  MEDIUM // متوسط
+  HIGH // عالي
+  CRITICAL // حرج جداً
+}
+
+enum ActionCategory {
+  BEHAVIORAL // سلوكي (سوء السلوك، عدم الاحترام)
+  ATTENDANCE // الحضور (تأخير، غياب)
+  PERFORMANCE // الأداء (ضعف الأداء، عدم إنجاز المهام)
+  POLICY_VIOLATION // انتهاك السياسات
+  SAFETY // السلامة والأمان
+  FINANCIAL // مالي (سرقة، احتيال)
+  MISCONDUCT // سوء السلوك المهني
+  OTHER // أخرى
+}
+
+enum ActionStatus {
+  ACTIVE // نشط
+  RESOLVED // تم حله
+  APPEALED // تم الاستئناف
+  CANCELLED // ملغي
+}
+
+// Employee Requests - طلبات الموظفين
+model EmployeeRequest {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation("EmployeeRequests", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  type     RequestType
+  priority RequestPriority @default(MEDIUM)
+
+  title       String // عنوان الطلب
+  description String? // وصف تفصيلي
+  attachments String[] // روابط المرفقات (array of URLs)
+
+  // Financial requests
+  requestedAmount Decimal? @db.Decimal(15, 2) // المبلغ المطلوب (للسلف والمصاريف)
+
+  // Status and review
+  status       RequestStatus @default(PENDING)
+  reviewedById String?
+  reviewedBy   User?         @relation("ReviewedEmployeeRequests", fields: [reviewedById], references: [id])
+  reviewNotes  String? // ملاحظات المراجعة
+  reviewedAt   DateTime? // تاريخ المراجعة
+
+  // معلومات النظام
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([type])
+  @@index([status])
+  @@index([priority])
+}
+
+enum RequestType {
+  SALARY_ADVANCE // سلفة على الراتب
+  CERTIFICATE // شهادة عمل (راتب، خبرة، إثبات عمل)
+  VACATION_BALANCE // استعلام عن رصيد الإجازات
+  SHIFT_CHANGE // تغيير الوردية
+  OVERTIME_APPROVAL // موافقة على عمل إضافي
+  EXPENSE_CLAIM // مطالبة بمصاريف (سفر، تدريب، إلخ)
+  TRANSFER_REQUEST // طلب نقل (قسم/فرع)
+  RESIGNATION // استقالة
+  COMPLAINT // شكوى
+  SUGGESTION // اقتراح
+  OTHER // أخرى
+}
+
+enum RequestStatus {
+  PENDING // قيد الانتظار
+  APPROVED // معتمد
+  REJECTED // مرفوض
+  CANCELLED // ملغي
+}
+
+enum RequestPriority {
+  LOW // منخفضة
+  MEDIUM // متوسطة
+  HIGH // عالية
+  URGENT // عاجلة
+}
+
+// Employee Exit - إنهاء خدمة الموظف
+model EmployeeExit {
+  id         String   @id @default(uuid())
+  employeeId String   @unique
+  employee   Employee @relation("EmployeeExit", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  exitType       ExitType
+  exitDate       DateTime // تاريخ إنهاء الخدمة
+  lastWorkingDay DateTime // آخر يوم عمل
+  reason         String? // سبب الإنهاء
+  detailedReason String? // سبب تفصيلي
+
+  // Exit Interview - مقابلة الخروج
+  exitInterviewDone Boolean   @default(false)
+  exitInterviewDate DateTime?
+  feedback          String? // ملاحظات الموظف
+  rehireEligible    Boolean   @default(true) // هل يمكن إعادة توظيفه؟
+
+  // Clearance Checklist - قائمة التسليم والاستلام
+  assetReturned          Boolean @default(false) // تسليم الأصول
+  documentsSigned        Boolean @default(false) // توقيع المستندات
+  accessRevoked          Boolean @default(false) // إلغاء الصلاحيات
+  exitInterviewCompleted Boolean @default(false)
+  handoverCompleted      Boolean @default(false) // تسليم المهام
+
+  // Financial Settlement - التسوية المالية
+  finalSettlement Decimal?  @db.Decimal(15, 2) // المبلغ النهائي (مستحقات/خصومات)
+  settlementPaid  Boolean   @default(false)
+  settlementDate  DateTime?
+  settlementNotes String?
+
+  // Processing info
+  processedBy     String?
+  processedByUser User?   @relation("ProcessedEmployeeExits", fields: [processedBy], references: [id])
+
+  // معلومات النظام
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([exitType])
+  @@index([exitDate])
+}
+
+enum ExitType {
+  RESIGNATION // استقالة
+  TERMINATION // فصل
+  RETIREMENT // تقاعد
+  CONTRACT_END // انتهاء العقد
+  MUTUAL_AGREEMENT // اتفاق متبادل
+  DEATH // وفاة
+  OTHER // أخرى
+}
+
+// Employee Benefits - المزايا والتأمينات
+model EmployeeBenefit {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation("EmployeeBenefits", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  type        BenefitType
+  name        String // اسم المزية/التأمين
+  description String? // وصف تفصيلي
+
+  // Provider Information
+  provider     String? // جهة التأمين/مقدم المزية
+  policyNumber String? // رقم البوليصة
+
+  // Coverage & Dates
+  startDate DateTime // تاريخ البداية
+  endDate   DateTime? // تاريخ الانتهاء (null = مستمر)
+  coverage  String? // التغطية (مثلاً: "100% للعلاج، 80% للأسنان")
+
+  // Financial
+  premium   Decimal?          @db.Decimal(15, 2) // القسط/التكلفة
+  amount    Decimal?          @db.Decimal(15, 2) // المبلغ (للمكافآت والبدلات)
+  frequency BenefitFrequency? // تكرار الدفع
+
+  // Status
+  isActive Boolean @default(true)
+  notes    String? // ملاحظات إضافية
+
+  // معلومات النظام
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([type])
+  @@index([isActive])
+  @@index([endDate])
+}
+
+enum BenefitType {
+  HEALTH_INSURANCE // تأمين صحي
+  LIFE_INSURANCE // تأمين على الحياة
+  DENTAL_INSURANCE // تأمين أسنان
+  VISION_INSURANCE // تأمين نظر
+  PENSION // معاش تقاعدي
+  BONUS // مكافأة
+  ALLOWANCE // بدل (سكن، مواصلات، إلخ)
+  TRANSPORTATION // بدل مواصلات
+  HOUSING // بدل سكن
+  MEAL_VOUCHER // وجبات/قسائم طعام
+  PHONE_ALLOWANCE // بدل هاتف
+  EDUCATION // مساعدة تعليمية
+  GYM_MEMBERSHIP // عضوية نادي رياضي
+  STOCK_OPTIONS // خيارات أسهم
+  COMMISSION // عمولة
+  OTHER // أخرى
+}
+
+enum BenefitFrequency {
+  MONTHLY // شهري
+  QUARTERLY // ربع سنوي
+  SEMI_ANNUAL // نصف سنوي
+  ANNUAL // سنوي
+  ONE_TIME // مرة واحدة
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum WorkLocation {
+  OFFICE
+  REMOTE
+  HYBRID
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  TEMPORARY
+  INTERN
+  CONSULTANT
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  INACTIVE
+  TERMINATED
+  ON_LEAVE
+  SUSPENDED
+}
+
+enum ShiftType {
+  DAY_SHIFT
+  NIGHT_SHIFT
+  EVENING_SHIFT
+  ROTATING
+  FLEXIBLE
+}
+
+// ===== INVOICES =====
+
+model SalesInvoice {
+  id            Int     @id @default(autoincrement())
+  invoiceNumber String  @unique // رقم الفاتورة
+  clientId      Int? // العميل (CUSTOMER) - Optional for walk-in customers
+  client        Client? @relation(fields: [clientId], references: [id])
+
+  // Invoice Details
+  totalAmount     Decimal @db.Decimal(15, 2) // المبلغ الإجمالي
+  paidAmount      Decimal @default(0.0) @db.Decimal(15, 2) // المبلغ المدفوع
+  remainingAmount Decimal @db.Decimal(15, 2) // المبلغ المتبقي
+
+  // Subtotal before discount
+  subtotalBeforeDiscount Decimal? @db.Decimal(15, 2) // المجموع قبل الخصم
+
+  // Discount
+  discount     Decimal?      @default(0) @db.Decimal(15, 2) // قيمة الخصم
+  discountType DiscountType? @default(FIXED) // نوع الخصم
+
+  // Currency support
+  currencyId Int? // Optional currency reference
+  currency   Currency? @relation("SalesInvoiceCurrency", fields: [currencyId], references: [id])
+
+  // Status
+  status      InvoiceStatus @default(UNPAID)
+  paymentType PaymentType   @default(CREDIT) // نوع الدفع: نقدي أم آجل
+
+  // Return/Credit Note Support
+  isReturn          Boolean              @default(false) // هل هذه فاتورة إرجاع؟
+  originalInvoiceId Int? // معرف الفاتورة الأصلية (للإرجاعات)
+  originalInvoice   SalesInvoice?        @relation("SalesInvoiceReturns", fields: [originalInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  returnInvoices    SalesInvoice[]       @relation("SalesInvoiceReturns") // فواتير الإرجاع المرتبطة بهذه الفاتورة (deprecated)
+  returnInvoicesNew SalesReturnInvoice[] // فواتير الإرجاع الجديدة المرتبطة بهذه الفاتورة
+
+  // Real Estate Contract Link - ربط العقود العقارية
+  propertyContractId Int? // معرف العقد العقاري
+  propertyContract   PropertyContract? @relation(fields: [propertyContractId], references: [id], onDelete: SetNull)
+
+  // Additional Info
+  description String? // وصف الفاتورة
+  notes       String? // ملاحظات
+  dueDate     DateTime? // تاريخ الاستحقاق
+
+  // User who created the invoice
+  userId String?
+  user   User?   @relation("CreatedSalesInvoices", fields: [userId], references: [id])
+
+  // POS Integration
+  isPOS        Boolean     @default(false) // Mark as POS transaction
+  posSessionId Int? // Link to POS session
+  posSession   POSSession? @relation("SessionInvoices", fields: [posSessionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cashierId    String? // Employee who processed (for "Served by")
+  cashier      Employee?   @relation("POSCashierInvoices", fields: [cashierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  printFormat  PrintFormat @default(RECEIPT) // Chosen print format for this invoice
+
+  // العلاقة مع المعاملات المحاسبية
+  transactions Transaction[]
+
+  // العلاقة مع تكوين الفاتورة المحاسبي (اختياري)
+  invoiceConfigId Int? // معرف تكوين الفاتورة المحاسبي
+  invoiceConfig   InvoiceAccountingConfig? @relation("SalesInvoiceConfig", fields: [invoiceConfigId], references: [id])
+
+  // Timing
+  invoiceDate DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isDeleted   Boolean  @default(false)
+
+  // Invoice items
+  items SalesInvoiceItem[]
+
+  // Returns from warehouse transactions (deprecated - use returnInvoices instead)
+  warehouseReturns WarehouseTransaction[] @relation("SalesInvoiceWarehouseReturns")
+
+  // Payment splits - تقسيمات الدفع
+  payments InvoicePayment[] @relation("SalesInvoicePayments")
+
+  @@index([isPOS, posSessionId])
+  @@index([cashierId])
+  @@map("sales_invoices")
+}
+
+model PurchaseInvoice {
+  id            Int    @id @default(autoincrement())
+  invoiceNumber String @unique // رقم الفاتورة
+  supplierId    Int // المورد (SUPPLIER)
+  supplier      Client @relation(fields: [supplierId], references: [id])
+
+  // Invoice Details
+  totalAmount     Decimal @db.Decimal(15, 2) // المبلغ الإجمالي
+  paidAmount      Decimal @default(0.0) @db.Decimal(15, 2) // المبلغ المدفوع
+  remainingAmount Decimal @db.Decimal(15, 2) // المبلغ المتبقي
+
+  // Subtotal before discount
+  subtotalBeforeDiscount Decimal? @db.Decimal(15, 2) // المجموع قبل الخصم
+
+  // Discount
+  discount     Decimal?      @default(0) @db.Decimal(15, 2) // قيمة الخصم
+  discountType DiscountType? @default(FIXED) // نوع الخصم
+
+  // Currency support
+  currencyId Int? // Optional currency reference
+  currency   Currency? @relation("PurchaseInvoiceCurrency", fields: [currencyId], references: [id])
+
+  // Status
+  status      InvoiceStatus @default(UNPAID)
+  paymentType PaymentType   @default(CREDIT) // نوع الدفع: نقدي أم آجل
+
+  // Return/Debit Note Support
+  isReturn          Boolean           @default(false) // هل هذه فاتورة إرجاع؟
+  originalInvoiceId Int? // معرف الفاتورة الأصلية (للإرجاعات)
+  originalInvoice   PurchaseInvoice?  @relation("PurchaseInvoiceReturns", fields: [originalInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  returnInvoices    PurchaseInvoice[] @relation("PurchaseInvoiceReturns") // فواتير الإرجاع المرتبطة بهذه الفاتورة (deprecated)
+
+  // Additional Info
+  description String? // وصف الفاتورة
+  notes       String? // ملاحظات
+  dueDate     DateTime? // تاريخ الاستحقاق
+
+  // User who created the invoice
+  userId String?
+  user   User?   @relation("CreatedPurchaseInvoices", fields: [userId], references: [id])
+
+  // العلاقة مع المعاملات المحاسبية
+  transactions Transaction[]
+
+  // العلاقة مع تكوين الفاتورة المحاسبي (اختياري)
+  invoiceConfigId Int? // معرف تكوين الفاتورة المحاسبي
+  invoiceConfig   InvoiceAccountingConfig? @relation("PurchaseInvoiceConfig", fields: [invoiceConfigId], references: [id])
+
+  // Timing
+  invoiceDate DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isDeleted   Boolean  @default(false)
+
+  // Invoice items
+  items PurchaseInvoiceItem[]
+
+  // Return invoices (new system)
+  returnInvoicesNew PurchaseReturnInvoice[] // فواتير الإرجاع الجديدة المرتبطة بهذه الفاتورة
+
+  // Returns from warehouse transactions (deprecated - use returnInvoices instead)
+  warehouseReturns WarehouseTransaction[] @relation("PurchaseInvoiceWarehouseReturns")
+
+  // Payment splits - تقسيمات الدفع
+  payments InvoicePayment[] @relation("PurchaseInvoicePayments")
+
+  @@map("purchase_invoices")
+}
+
+// ===== INVOICE ACCOUNTING CONFIGURATION =====
+
+// جدول تكوين الحسابات المحاسبية للفواتير
+model InvoiceAccountingConfig {
+  id Int @id @default(autoincrement())
+
+  // اسم التكوين - Configuration Name
+  name String @default("Default Config") // اسم التكوين 
+
+  // نوع الفاتورة والدفع
+  invoiceType InvoiceType // SALES أو PURCHASE
+  paymentType PaymentType // CASH أو CREDIT
+
+  // الحسابات المحاسبية
+  debitAccountId  Int // الحساب المدين
+  creditAccountId Int // الحساب الدائن
+
+  // العلاقات
+  debitAccount  Account @relation("DebitAccountConfigs", fields: [debitAccountId], references: [id])
+  creditAccount Account @relation("CreditAccountConfigs", fields: [creditAccountId], references: [id])
+
+  // العلاقة مع الفواتير
+  salesInvoices    SalesInvoice[]    @relation("SalesInvoiceConfig")
+  purchaseInvoices PurchaseInvoice[] @relation("PurchaseInvoiceConfig")
+
+  // معلومات إضافية
+  description String? // وصف التكوين
+  isActive    Boolean  @default(true)
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("invoice_accounting_configs")
+}
+
+// نوع الفاتورة للتكوين
+enum InvoiceType {
+  SALES // فاتورة مبيعات
+  PURCHASE // فاتورة مشتريات
+}
+
+enum DiscountType {
+  FIXED // Fixed amount discount
+  PERCENTAGE // Percentage discount
+}
+
+// ===== INVOICE PAYMENT SPLITS =====
+
+enum InvoicePaymentType {
+  SALES_INVOICE // فاتورة مبيعات
+  PURCHASE_INVOICE // فاتورة مشتريات
+}
+
+// جدول تقسيمات الدفع للفواتير - يدعم طرق دفع متعددة في دفعة واحدة
+model InvoicePayment {
+  id Int @id @default(autoincrement())
+
+  // نوع الفاتورة
+  invoiceType InvoicePaymentType
+
+  // معرف الفاتورة (يمكن أن يكون salesInvoiceId أو purchaseInvoiceId حسب invoiceType)
+  salesInvoiceId    Int?
+  purchaseInvoiceId Int?
+
+  // العلاقات مع الفواتير
+  salesInvoice    SalesInvoice?    @relation("SalesInvoicePayments", fields: [salesInvoiceId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  purchaseInvoice PurchaseInvoice? @relation("PurchaseInvoicePayments", fields: [purchaseInvoiceId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  // تفاصيل الدفع
+  amount      Decimal     @db.Decimal(15, 2) // المبلغ لهذه الطريقة
+  paymentType PaymentType // طريقة الدفع (نقدي، بطاقة، تحويل بنكي، آجل)
+
+  // الحساب المحاسبي الذي استلم/دفع هذا المبلغ
+  accountId Int
+  account   Account @relation("InvoicePaymentAccounts", fields: [accountId], references: [id])
+
+  // ربط مع المعاملة المحاسبية (اختياري)
+  transactionId Int?
+  transaction   Transaction? @relation("InvoicePaymentTransactions", fields: [transactionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // ملاحظات
+  notes String?
+
+  // معلومات النظام
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([salesInvoiceId])
+  @@index([purchaseInvoiceId])
+  @@index([paymentType])
+  @@index([transactionId])
+  @@map("invoice_payments")
+}
+
+// تحديث نموذج الحساب لإضافة العلاقات الجديدة
+// (سيتم إضافة هذا إلى نموذج Account الموجود)
+
+// ===== POS SYSTEM =====
+
+enum PrintFormat {
+  RECEIPT // 80mm thermal receipt
+  A5 // A5 invoice
+  A4 // A4 invoice
+}
+
+// POS Terminal Model - Support Multiple Terminals
+model POS {
+  id       Int     @id @default(autoincrement())
+  name     String // "Cashier-1", "Main-POS", "Terminal-A"
+  slug     String  @unique // "cashier-1", "main-pos", "terminal-a"
+  location String? // Physical location description
+
+  // Settings
+  isActive    Boolean     @default(true)
+  printFormat PrintFormat @default(RECEIPT) // Default print format
+
+  // Current state
+  isLocked Boolean   @default(false)
+  lockedAt DateTime?
+  lockedBy String? // Employee ID who locked it
+
+  // Relations
+  sessions POSSession[] @relation("POSSessions")
+
+  // Audit
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("pos_terminals")
+}
+
+enum SessionStatus {
+  OPEN // Active session
+  CLOSED // Completed session
+  SUSPENDED // Temporarily paused
+}
+
+// POS Session Model - Track Shifts/Sessions
+model POSSession {
+  id            Int     @id @default(autoincrement())
+  sessionNumber String? // Session number
+
+  posId Int
+  pos   POS @relation("POSSessions", fields: [posId], references: [id])
+
+  employeeId String // Cashier for this session
+  employee   Employee @relation("EmployeePOSSessions", fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // Session timing
+  openedAt DateTime      @default(now())
+  closedAt DateTime?
+  status   SessionStatus @default(OPEN)
+
+  // Cash management
+  openingBalance Decimal  @db.Decimal(15, 2) // Starting cash in drawer
+  closingBalance Decimal? @db.Decimal(15, 2) // Ending cash (counted)
+  expectedCash   Decimal? @db.Decimal(15, 2) // Calculated from cash transactions
+  cashDifference Decimal? @db.Decimal(15, 2) // Over/Short (closingBalance - expectedCash)
+
+  // Session summary (simple counters, updated on each transaction)
+  totalSales        Decimal @default(0) @db.Decimal(15, 2)
+  totalTransactions Int     @default(0)
+
+  // Note: Cash/Card/BankTransfer breakdowns are calculated via queries on invoices table, not stored
+
+  // Relations
+  invoices SalesInvoice[] @relation("SessionInvoices")
+
+  // Notes
+  openingNotes String? // Notes when opening
+  closingNotes String? // Notes when closing
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([posId, status])
+  @@index([employeeId])
+  @@map("pos_sessions")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // e.g., "Admin", "Manager", "Sales Rep"
+  description String? // Human-readable description
+  color       String? // UI color for the role
+  isSystem    Boolean  @default(false) // System roles cannot be deleted
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  userRoles       UserRole[]       @relation("RoleUsers")
+  rolePermissions RolePermission[] @relation("RolePermissions")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  roleId    String
+  role      Role     @relation("RoleUsers", fields: [roleId], references: [id], onDelete: Cascade)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, roleId])
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique // e.g., "users:create", "projects:read", "tasks:update"
+  description String? // Human-readable description
+  resource    String // e.g., "users", "projects", "tasks" (model name)
+  action      String // e.g., "create", "read", "update", "delete"
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Many-to-many relationship with roles
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  role         Role       @relation("RolePermissions", fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  isDeleted    Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([roleId, permissionId])
+}
+
+// أصناف فاتورة البيع - Sales Invoice Items
+model SalesInvoiceItem {
+  id        Int     @id @default(autoincrement())
+  invoiceId Int // معرف الفاتورة
+  productId Int // معرف المنتج
+  unitId    Int? // معرف الوحدة (اختياري)
+  quantity  Decimal @db.Decimal(15, 3) // الكمية
+  unitPrice Decimal @db.Decimal(15, 2) // سعر الوحدة
+
+  // العلاقات
+  invoice SalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  product Product      @relation(fields: [productId], references: [id])
+  unit    Unit?        @relation(fields: [unitId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Return items - أصناف الإرجاع المرتبطة بهذا الصنف
+  returnItems WarehouseTransactionItem[] @relation("SalesInvoiceItemReturns")
+
+  // Return invoice items - أصناف فواتير الإرجاع المرتبطة بهذا الصنف
+  returnInvoiceItems SalesReturnInvoiceItem[]
+
+  @@map("sales_invoice_items")
+}
+
+// أصناف فاتورة الشراء - Purchase Invoice Items
+model PurchaseInvoiceItem {
+  id        Int     @id @default(autoincrement())
+  invoiceId Int // معرف الفاتورة
+  productId Int // معرف المنتج
+  unitId    Int? // معرف الوحدة (اختياري)
+  quantity  Decimal @db.Decimal(15, 3) // الكمية
+  unitPrice Decimal @db.Decimal(15, 2) // سعر الوحدة
+
+  // العلاقات
+  invoice PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  product Product         @relation(fields: [productId], references: [id])
+  unit    Unit?           @relation(fields: [unitId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Return items - أصناف الإرجاع المرتبطة بهذا الصنف
+  returnItems WarehouseTransactionItem[] @relation("PurchaseInvoiceItemReturns")
+
+  // Return invoice items - أصناف فواتير الإرجاع المرتبطة بهذا الصنف
+  returnInvoiceItems PurchaseReturnInvoiceItem[]
+
+  @@map("purchase_invoice_items")
+}
+
+// ===== PURCHASE RETURN INVOICES =====
+
+// فاتورة إرجاع الشراء - Purchase Return Invoice
+model PurchaseReturnInvoice {
+  id                  Int             @id @default(autoincrement())
+  returnInvoiceNumber String          @unique // رقم فاتورة الإرجاع
+  purchaseInvoiceId   Int // معرف فاتورة الشراء الأصلية
+  purchaseInvoice     PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // ربط مع القسم
+  departmentId String? // القسم (اختياري)
+  department   Department? @relation("PurchaseReturnInvoiceDepartment", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // Invoice Details
+  totalAmount Decimal @db.Decimal(15, 2) // المبلغ الإجمالي
+  netAmount   Decimal @db.Decimal(15, 2) // المبلغ الصافي
+
+  // Currency support
+  currencyId Int? // العملة
+  currency   Currency? @relation("PurchaseReturnInvoiceCurrency", fields: [currencyId], references: [id])
+
+  // Status
+  status InvoiceStatus @default(PAID)
+
+  // Additional Info
+  notes                  String? // ملاحظات
+  returnReason           String? // سبب الإرجاع
+  referenceInvoiceNumber String? // رقم الفاتورة المرجعية من الشركة الموردة
+
+  // User who created the return invoice
+  userId String?
+  user   User?   @relation("CreatedPurchaseReturnInvoices", fields: [userId], references: [id])
+
+  // العلاقة مع المعاملات المحاسبية
+  transactions Transaction[]
+
+  // Timing
+  returnDate DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  isDeleted  Boolean  @default(false)
+
+  // Return invoice items
+  items PurchaseReturnInvoiceItem[]
+
+  @@map("purchase_return_invoices")
+}
+
+// أصناف فاتورة إرجاع الشراء - Purchase Return Invoice Items
+model PurchaseReturnInvoiceItem {
+  id                            Int     @id @default(autoincrement())
+  returnInvoiceId               Int // معرف فاتورة الإرجاع
+  originalPurchaseInvoiceItemId Int // معرف صنف فاتورة الشراء الأصلي
+  productId                     Int // معرف المنتج
+  unitId                        Int? // معرف الوحدة (اختياري)
+  quantity                      Decimal @db.Decimal(15, 3) // الكمية المرجعة
+  unitPrice                     Decimal @db.Decimal(15, 2) // سعر الوحدة
+  totalPrice                    Decimal @db.Decimal(15, 2) // إجمالي السعر
+
+  // تتبع موحد (اختياري)
+  trackingId Int? // معرف التتبع
+  tracking   Tracking? @relation("PurchaseReturnInvoiceItemTracking", fields: [trackingId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // ملاحظات
+  notes String? // ملاحظات خاصة بالصنف
+
+  // العلاقات
+  returnInvoice               PurchaseReturnInvoice @relation(fields: [returnInvoiceId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  originalPurchaseInvoiceItem PurchaseInvoiceItem   @relation(fields: [originalPurchaseInvoiceItemId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  product                     Product               @relation("PurchaseReturnInvoiceItemProduct", fields: [productId], references: [id])
+  unit                        Unit?                 @relation("PurchaseReturnInvoiceItemUnit", fields: [unitId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("purchase_return_invoice_items")
+}
+
+// ===== SALES RETURN INVOICES =====
+
+// فاتورة إرجاع البيع - Sales Return Invoice
+model SalesReturnInvoice {
+  id                  Int          @id @default(autoincrement())
+  returnInvoiceNumber String       @unique // رقم فاتورة الإرجاع
+  salesInvoiceId      Int // معرف فاتورة البيع الأصلية
+  salesInvoice        SalesInvoice @relation(fields: [salesInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // ربط مع القسم
+  departmentId String? // القسم (اختياري)
+  department   Department? @relation("SalesReturnInvoiceDepartment", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // Invoice Details
+  totalAmount Decimal @db.Decimal(15, 2) // المبلغ الإجمالي
+  netAmount   Decimal @db.Decimal(15, 2) // المبلغ الصافي
+
+  // Currency support
+  currencyId Int? // العملة
+  currency   Currency? @relation("SalesReturnInvoiceCurrency", fields: [currencyId], references: [id])
+
+  // Status
+  status InvoiceStatus @default(PAID)
+
+  // Additional Info
+  notes                  String? // ملاحظات
+  returnReason           String? // سبب الإرجاع
+  referenceInvoiceNumber String? // رقم الفاتورة المرجعية من العميل
+
+  // User who created the return invoice
+  userId String?
+  user   User?   @relation("CreatedSalesReturnInvoices", fields: [userId], references: [id])
+
+  // العلاقة مع المعاملات المحاسبية
+  transactions Transaction[]
+
+  // Timing
+  returnDate DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  isDeleted  Boolean  @default(false)
+
+  // Return invoice items
+  items SalesReturnInvoiceItem[]
+
+  @@map("sales_return_invoices")
+}
+
+// أصناف فاتورة إرجاع البيع - Sales Return Invoice Items
+model SalesReturnInvoiceItem {
+  id                         Int     @id @default(autoincrement())
+  returnInvoiceId            Int // معرف فاتورة الإرجاع
+  originalSalesInvoiceItemId Int // معرف صنف فاتورة البيع الأصلي
+  productId                  Int // معرف المنتج
+  unitId                     Int? // معرف الوحدة (اختياري)
+  quantity                   Decimal @db.Decimal(15, 3) // الكمية المرجعة
+  unitPrice                  Decimal @db.Decimal(15, 2) // سعر الوحدة
+  totalPrice                 Decimal @db.Decimal(15, 2) // إجمالي السعر
+
+  // تتبع موحد (اختياري)
+  trackingId Int? // معرف التتبع
+  tracking   Tracking? @relation("SalesReturnInvoiceItemTracking", fields: [trackingId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // ملاحظات
+  notes String? // ملاحظات خاصة بالصنف
+
+  // العلاقات
+  returnInvoice            SalesReturnInvoice @relation(fields: [returnInvoiceId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  originalSalesInvoiceItem SalesInvoiceItem   @relation(fields: [originalSalesInvoiceItemId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  product                  Product            @relation("SalesReturnInvoiceItemProduct", fields: [productId], references: [id])
+  unit                     Unit?              @relation("SalesReturnInvoiceItemUnit", fields: [unitId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sales_return_invoice_items")
+}
+
+// ===============================
+// WAREHOUSE MANAGEMENT SYSTEM
+// نظام إدارة المخازن والمخزون - متقدم ومرن
+// ===============================
+
+// ===============================
+// ENHANCED UNIT MEASUREMENT SYSTEM
+// نظام الوحدات المتقدم والمبسط
+// ===============================
+
+// 1. فئات الوحدات - Unit Categories (الطول، الوزن، الحجم، إلخ)
+model UnitCategory {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique // اسم فئة الوحدة (طول، وزن، حجم، إلخ)
+  description String? // وصف فئة الوحدة
+
+  // إعدادات
+  isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // العلاقات
+  units Unit[] // الوحدات التابعة لهذه الفئة
+
+  @@map("unit_categories")
+}
+
+// 2. الوحدات المحسنة - Enhanced Units  
+model Unit {
+  id          Int          @id @default(autoincrement())
+  name        String // اسم الوحدة (متر، سنتيمتر، كيلومتر، إلخ)
+  symbol      String? // رمز الوحدة (m، cm، km، إلخ)
+  description String? // وصف الوحدة
+  categoryId  Int // معرف فئة الوحدة
+  category    UnitCategory @relation(fields: [categoryId], references: [id])
+
+  // نوع الوحدة ونسبة التحويل
+  type  UnitType @default(MAIN) // MAIN (الأساسية)، SMALLER (أصغر)، BIGGER (أكبر)
+  ratio Decimal  @default(1.0) @db.Decimal(15, 6) // نسبة التحويل
+
+  // إعدادات
+  isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // العلاقات مع المنتجات
+  productsAsSalesUnit    Product[] @relation("ProductSalesUnit") // المنتجات التي تستخدم هذه الوحدة للبيع
+  productsAsPurchaseUnit Product[] @relation("ProductPurchaseUnit") // المنتجات التي تستخدم هذه الوحدة للشراء
+
+  // العلاقات مع فواتير البيع والشراء
+  salesInvoiceItems          SalesInvoiceItem[] // أصناف فواتير البيع التي تستخدم هذه الوحدة
+  purchaseInvoiceItems       PurchaseInvoiceItem[] // أصناف فواتير الشراء التي تستخدم هذه الوحدة
+  purchaseReturnInvoiceItems PurchaseReturnInvoiceItem[] @relation("PurchaseReturnInvoiceItemUnit") // أصناف فواتير إرجاع الشراء التي تستخدم هذه الوحدة
+  salesReturnInvoiceItems    SalesReturnInvoiceItem[]    @relation("SalesReturnInvoiceItemUnit") // أصناف فواتير إرجاع البيع التي تستخدم هذه الوحدة
+
+  // العلاقات مع التتبع
+  storageTrackings Tracking[] @relation("StorageUnit") // التتبع الذي يستخدم هذه الوحدة للتخزين
+
+  // العلاقات مع حركات المخزون
+  warehouseTransactionItems WarehouseTransactionItem[] // أصناف حركات المخزون التي تستخدم هذه الوحدة
+
+  @@unique([categoryId, name]) // منع تكرار الاسم في نفس الفئة
+  @@map("units")
+}
+
+// 2. المنتجات - Products (مع وحدتين منفصلتين للبيع والشراء)
+model Product {
+  id          Int     @id @default(autoincrement())
+  name        String // اسم المنتج
+  barcode     String  @unique // الباركود
+  description String? // وصف المنتج (اختياري)
+
+  // نوع المنتج - Product Type
+  type ProductType @default(PRODUCT) // منتج حقيقي أو خدمة
+
+  // وحدات القياس
+  salesUnitId    Int? // وحدة البيع (مثل: علبة)
+  purchaseUnitId Int? // وحدة الشراء (مثل: كرتون)
+  salesUnit      Unit? @relation("ProductSalesUnit", fields: [salesUnitId], references: [id])
+  purchaseUnit   Unit? @relation("ProductPurchaseUnit", fields: [purchaseUnitId], references: [id])
+
+  // الأسعار
+  purchasePrice Decimal? @db.Decimal(15, 2) // سعر الشراء (بالوحدة الشرائية)
+  salePrice     Decimal? @db.Decimal(15, 2) // سعر البيع (بالوحدة البيعية)
+
+  // خصائص المنتج
+  minStockAlert Decimal? @db.Decimal(15, 3) // حد التنبيه للمخزون
+  imageUrl      String? // رابط صورة المنتج
+
+  // إعدادات
+  isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // العلاقات
+  stocks                     Stock[]
+  warehouseTransactionItems  WarehouseTransactionItem[]
+  salesInvoiceItems          SalesInvoiceItem[]
+  purchaseInvoiceItems       PurchaseInvoiceItem[]
+  purchaseReturnInvoiceItems PurchaseReturnInvoiceItem[] @relation("PurchaseReturnInvoiceItemProduct")
+  salesReturnInvoiceItems    SalesReturnInvoiceItem[]    @relation("SalesReturnInvoiceItemProduct")
+  categories                 ProductCategoryRelation[]
+  saleItems                  SaleItem[]
+
+  @@map("products")
+}
+
+// 2.1. فئات المنتجات - Product Categories
+model ProductCategory {
+  id          Int                       @id @default(autoincrement())
+  name        String
+  description String?
+  isActive    Boolean                   @default(true)
+  isDeleted   Boolean                   @default(false)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  products    ProductCategoryRelation[]
+
+  @@map("product_categories")
+}
+
+// 2.2. علاقة المنتجات بالفئات - Product Category Relation (Many-to-Many)
+model ProductCategoryRelation {
+  id         Int             @id @default(autoincrement())
+  productId  Int
+  categoryId Int
+  product    Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt  DateTime        @default(now())
+
+  @@unique([productId, categoryId])
+  @@map("product_category_relations")
+}
+
+// 3. المخازن - Warehouses (مع دعم الهيكل المتداخل 🪜)
+model Warehouse {
+  id          Int     @id @default(autoincrement())
+  name        String // اسم المخزن
+  parentId    Int? // معرف المخزن الأب (للهيكل المتداخل)
+  location    String? // الموقع (اختياري)
+  description String? // وصف المخزن (اختياري)
+
+  // العلاقات الهرمية
+  parent   Warehouse?  @relation("WarehouseHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children Warehouse[] @relation("WarehouseHierarchy")
+
+  // إعدادات
+  isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // العلاقات
+  stocks           Stock[]
+  transactionsFrom WarehouseTransaction[] @relation("FromWarehouse")
+  transactionsTo   WarehouseTransaction[] @relation("ToWarehouse")
+
+  @@map("warehouses")
+}
+
+// 5. مخزون المنتجات - Stock (مرجع فقط بدون quantity)
+model Stock {
+  id               Int      @id @default(autoincrement())
+  productId        Int // معرف المنتج
+  warehouseId      Int // معرف المخزن
+  reorderLevel     Decimal? @db.Decimal(15, 3) // مستوى إعادة الطلب (اختياري)
+  quantityReserved Decimal  @default(0) @db.Decimal(15, 3) // Reserved from confirmed sales orders
+
+  // العلاقات
+  product   Product   @relation(fields: [productId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // تتبع الدفعات والأرقام التسلسلية والمنتجات بدون تتبع
+  trackings Tracking[]
+
+  // تواريخ
+  lastUpdated DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([productId, warehouseId]) // مخزون واحد لكل منتج في كل مخزن
+  @@map("stocks")
+}
+
+// 5.1. تتبع موحد - Unified Tracking (لجميع أنواع التتبع)
+model Tracking {
+  id      Int @id @default(autoincrement())
+  stockId Int // معرف المخزون
+
+  // نوع التتبع
+  trackingType ProductTrackingType // NONE, LOT, SERIAL
+
+  // معرفات التتبع (حسب النوع)
+  lotNumber    String? // رقم الدفعة (للمنتجات التي تتبع بالدفعات)
+  serialNumber String? // الرقم التسلسلي (للمنتجات التي تتبع بالأرقام التسلسلية)
+  batchName    String? // اسم الدفعة (للمنتجات العادية التي لها دفعات)
+
+  // الوحدة والكمية
+  storageUnitId Int? // وحدة التخزين (كارتون، قطعة، إلخ)
+  storageUnit   Unit?   @relation("StorageUnit", fields: [storageUnitId], references: [id])
+  quantity      Decimal @db.Decimal(15, 3) // كمية هذه الدفعة/الرقم التسلسلي بالوحدة المحددة
+
+  // تواريخ مهمة (للدفعات)
+  productionDate DateTime? // تاريخ الإنتاج
+  expiryDate     DateTime? // تاريخ انتهاء الصلاحية
+
+  // معلومات إضافية
+  supplierName String? // اسم المورد (اختياري)
+  notes        String? // ملاحظات (اختياري)
+
+  // إعدادات
+  isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // العلاقات
+  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  // معاملات هذا التتبع
+  transactionItems           WarehouseTransactionItem[]
+  purchaseReturnInvoiceItems PurchaseReturnInvoiceItem[] @relation("PurchaseReturnInvoiceItemTracking")
+  salesReturnInvoiceItems    SalesReturnInvoiceItem[]    @relation("SalesReturnInvoiceItemTracking")
+
+  @@unique([stockId, lotNumber, serialNumber, batchName]) // منع التكرار
+  @@map("trackings")
+}
+
+// 6. المعاملات/الحركات - Warehouse Transactions (دعم منتجات متعددة)
+model WarehouseTransaction {
+  id              Int                      @id @default(autoincrement())
+  type            WarehouseTransactionType // نوع المعاملة
+  fromWarehouseId Int? // المخزن المصدر (nullable)
+  toWarehouseId   Int? // المخزن الهدف (nullable)
+
+  // إجمالي السعر للمعاملة الكاملة (مجموع كل الأصناف)
+  totalPrice Decimal? @db.Decimal(15, 2) // إجمالي السعر
+
+  // معلومات إضافية
+  date            DateTime @default(now()) // تاريخ ووقت المعاملة
+  note            String? // ملاحظة (اختيارية)
+  partyName       String? // اسم الطرف (عميل/مورد) (اختياري)
+  referenceNumber String? // رقم مرجعي (رقم فاتورة مثلاً)
+  userId          String? // المستخدم الذي قام بالمعاملة
+
+  // ربط بالفواتير (للإرجاعات)
+  salesInvoiceId    Int? // معرف فاتورة البيع المرتبطة بالإرجاع
+  purchaseInvoiceId Int? // معرف فاتورة الشراء المرتبطة بالإرجاع
+
+  // العلاقات
+  fromWarehouse Warehouse? @relation("FromWarehouse", fields: [fromWarehouseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  toWarehouse   Warehouse? @relation("ToWarehouse", fields: [toWarehouseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  user          User?      @relation("WarehouseTransactions", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // علاقات الفواتير (للإرجاعات)
+  salesInvoice    SalesInvoice?    @relation("SalesInvoiceWarehouseReturns", fields: [salesInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  purchaseInvoice PurchaseInvoice? @relation("PurchaseInvoiceWarehouseReturns", fields: [purchaseInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // أصناف المعاملة (دعم منتجات متعددة مع تتبع)
+  items WarehouseTransactionItem[]
+
+  // تواريخ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("warehouse_transactions")
+}
+
+// 6.1. أصناف معاملات المخزون - Warehouse Transaction Items (مع تتبع موحد)
+model WarehouseTransactionItem {
+  id            Int      @id @default(autoincrement())
+  transactionId Int // معرف المعاملة
+  productId     Int // معرف المنتج
+  quantity      Decimal  @db.Decimal(15, 3) // الكمية
+  unitPrice     Decimal? @db.Decimal(15, 2) // سعر الوحدة (شراء أو بيع)
+  totalPrice    Decimal? @db.Decimal(15, 2) // إجمالي السعر للصنف
+
+  // تتبع موحد (اختياري)
+  trackingId Int? // معرف التتبع (إذا كان المنتج له تتبع)
+  tracking   Tracking? @relation(fields: [trackingId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // الوحدة المستخدمة في الحركة (اختياري)
+  unitId Int? // معرف الوحدة المستخدمة في الحركة
+  unit   Unit? @relation(fields: [unitId], references: [id])
+
+  // ملاحظة خاصة بالصنف (اختيارية)
+  itemNote String?
+
+  // ربط بأصناف الفواتير الأصلية (للإرجاعات)
+  originalSalesInvoiceItemId    Int? // معرف صنف فاتورة البيع الأصلي
+  originalPurchaseInvoiceItemId Int? // معرف صنف فاتورة الشراء الأصلي
+
+  // العلاقات
+  transaction WarehouseTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  product     Product              @relation(fields: [productId], references: [id])
+
+  // علاقات أصناف الفواتير الأصلية (للإرجاعات)
+  originalSalesInvoiceItem    SalesInvoiceItem?    @relation("SalesInvoiceItemReturns", fields: [originalSalesInvoiceItemId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  originalPurchaseInvoiceItem PurchaseInvoiceItem? @relation("PurchaseInvoiceItemReturns", fields: [originalPurchaseInvoiceItemId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("warehouse_transaction_items")
+}
+
+// أنواع معاملات المخزون (مبسط)
+enum WarehouseTransactionType {
+  PURCHASE // شراء - إدخال بضاعة جديدة من مورد
+  SALE // بيع - بيع في الصيدلية للزبائن  
+  DISPENSE // صرف - صرف للمرضى في العيادة
+  TRANSFER // تحويل - نقل بين المخازن
+  ADJUST // تعديل - تصحيح المخزون (زيادة أو نقص)
+  DAMAGE // إتلاف - إتلاف المخزون التالف أو منتهي الصلاحية
+  ADD // إضافة - إضافة مخزون جديد مباشرة (بدون مورد)
+  RETURN // إرجاع - إرجاع أصناف من فاتورة بيع أو شراء
+}
+
+// أنواع الوحدات
+enum UnitType {
+  MAIN // الوحدة الأساسية (مثل المتر، ratio = 1)
+  SMALLER // وحدة أصغر (مثل السنتيمتر، ratio = 100)
+  BIGGER // وحدة أكبر (مثل الكيلومتر، ratio = 1000)
+}
+
+// أنواع تتبع المنتجات - Product Tracking Types (مثل Odoo)
+enum ProductTrackingType {
+  NONE // لا يوجد تتبع - No tracking
+  LOT // تتبع بالدفعات - Track by lots/batches
+  SERIAL // تتبع بالأرقام التسلسلية - Track by serial numbers
+}
+
+// أنواع المنتجات - Product Types
+enum ProductType {
+  PRODUCT // منتج حقيقي - Physical product (يمكن تخزينه في المخازن)
+  SERVICE // خدمة - Service (لا يمكن تخزينها ولا تتبعها)
+}
+
+// ===== INVOICE TEMPLATES =====
+
+enum InvoiceTemplateType {
+  INVOICE // فاتورة
+  RECEIPT // إيصال
+}
+
+model InvoiceTemplate {
+  id                Int                 @id @default(autoincrement())
+  type              InvoiceTemplateType @unique // Only one template per type
+  headerCompanyName String // Company name for header
+  headerAddress     String? // Company address for header
+  headerLogoUrl     String? // Logo URL for header
+  footerText        String? // Footer text
+  isActive          Boolean             @default(true)
+  isDeleted         Boolean             @default(false)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@map("invoice_templates")
+}
+
+enum PropertyType {
+  APARTMENT // شقة
+  VILLA // فيلا
+  HOUSE // بيت
+  LAND // أرض
+  SHOP // محل تجاري
+  OFFICE // مكتب
+  WAREHOUSE // مستودع
+  BUILDING // عمارة
+  OPEN_FLOOR // طابق مفتوح
+  FARM // مزرعة
+  OTHER // أخرى
+}
+
+enum PropertyStatus {
+  AVAILABLE // متاح
+  RESERVED // محجوز
+  SOLD // مباع
+  RENTED // مؤجر
+  UNDER_MAINTENANCE // تحت الصيانة
+  UNAVAILABLE // غير متاح
+}
+
+enum OfferStatus {
+  PENDING // قيد الانتظار
+  ACCEPTED // مقبول
+  REJECTED // مرفوض
+  EXPIRED // منتهي
+  CONVERTED_TO_CONTRACT // تم تحويله لعقد
+}
+
+enum ContractType {
+  SALE_PURCHASE // بيع وشراء
+  RENT_LEASE // إيجار واستئجار
+  INVESTMENT // استثمار
+}
+
+enum PropertyRequestType {
+  SALE // شراء
+  LEASE // استئجار
+}
+
+enum ContractStatus {
+  DRAFT // مسودة
+  ACTIVE // نشط
+  COMPLETED // مكتمل
+  CANCELLED // ملغي
+  EXPIRED // منتهي
+}
+
+enum PropertyGroupFilter {
+  SALE // بيع
+  RENT // ايجار
+}
+
+enum CityCenterFilter {
+  COMMERCIAL_SALES // مبيعات تجاري
+  RESIDENTIAL_SALES // مبيعات سكني
+  COMMERCIAL_RENTALS // اجارات تجاري
+  RESIDENTIAL_RENTALS // اجارات سكني
+}
+
+// ===== REAL ESTATE MODELS =====
+
+// مجموعات العقارات - Property Groups
+model PropertyGroup {
+  id Int @id @default(autoincrement())
+
+  // Basic Information - المعلومات الأساسية
+  name        String // اسم المجموعة (مثل: مجمع النرجس السكني)
+  description String? // وصف المجموعة
+
+  // Location - الموقع
+  city     String? // المدينة
+  district String? // الحي/المنطقة
+  address  String? // العنوان
+
+  // Relationships - العلاقات
+  properties       Property[]        // العقارات في هذه المجموعة
+
+  // System Fields - حقول النظام
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("property_groups")
+}
+
+// العقارات - Properties
+model Property {
+  id Int @id @default(autoincrement())
+
+  // Basic Information - المعلومات الأساسية
+  title        String // عنوان العقار
+  description  String? // وصف العقار
+  propertyType PropertyType // نوع العقار (شقة، فيلا، أرض، إلخ)
+
+  // Location - الموقع
+  address     String? // العنوان
+  city        String? // المدينة
+  district    String? // الحي/المنطقة
+  coordinates String? // الإحداثيات (latitude,longitude)
+
+  // Dimensions - الأبعاد
+  length Decimal? @db.Decimal(10, 2) // الطول (متر)
+  width  Decimal? @db.Decimal(10, 2) // العرض (متر)
+  height Decimal? @db.Decimal(10, 2) // الارتفاع (متر)
+
+  // Area - المساحة
+  area                Decimal? @db.Decimal(15, 2) // مساحة الأرض
+  builtUpArea         Decimal? @db.Decimal(15, 2) // مساحة البناء
+  gardenArea          Decimal? @db.Decimal(15, 2) // مساحة الحديقة/الفناء
+  buildingToLandRatio Decimal? @db.Decimal(5, 2) // نسبة البناء إلى الأرض %
+  areaUnit            String?  @default("m²") // وحدة المساحة (متر مربع)
+
+  // Details - التفاصيل
+  bedrooms      Int? // عدد غرف النوم
+  bathrooms     Int? // عدد الحمامات
+  floors        Int? // عدد الطوابق
+  parkingSpaces Int? // عدد مواقف السيارات
+  yearBuilt     Int? // سنة البناء
+  buildingAge   Int? // عمر البناء (سنوات)
+
+  // Construction - البناء والتشطيب
+  finishingType String? // نوع التشطيب (ديلوكس، عادي، بدون)
+  structureType String? // نوع الهيكل (خرسانة، حديد، خشب)
+  flooringType  String? // نوع الأرضيات (رخام، بلاط، باركيه، سيراميك)
+  windowType    String? // نوع النوافذ (ألمنيوم، UPVC، خشب)
+  doorType      String? // نوع الأبواب
+
+  // Utilities - المرافق والخدمات
+  acSystem          String? // نظام التكييف (مركزي، سبليت، لا يوجد)
+  heatingSystem     String? // نظام التدفئة
+  thermalInsulation Boolean? @default(false) // عزل حراري
+  soundInsulation   Boolean? @default(false) // عزل صوتي
+  waterproofing     Boolean? @default(false) // عزل مائي
+  waterSource       String? // مصدر المياه (حكومي، خاص، بئر)
+  electricityType   String? // نوع الكهرباء (حكومية، مولدات، طاقة شمسية)
+  internetType      String? // الإنترنت (ألياف، ADSL، لا يوجد)
+  securitySystem    String? // نظام الأمن (كاميرات، إنذار، حراسة، لا يوجد)
+
+  // Additional Features - المميزات الإضافية
+  elevators       Int? // عدد المصاعد
+  hasSwimmingPool Boolean? @default(false) // مسبح
+  hasGym          Boolean? @default(false) // صالة رياضية
+  hasMaidRoom     Boolean? @default(false) // غرفة خادمة
+  hasStorage      Boolean? @default(false) // مخزن
+  balconies       Int? // عدد الشرفات/البلكونات
+  balconyArea     Decimal? @db.Decimal(10, 2) // مساحة الشرفة
+  view            String? // الإطلالة (بحر، جبل، شارع، حديقة)
+  direction       String? // اتجاه العقار (شمالي، جنوبي، شرقي، غربي)
+
+  // Legal Information - معلومات قانونية
+  deedNumber String? // رقم الصك/السند
+  planNumber String? // رقم المخطط
+  plotNumber String? // رقم القطعة
+
+  // Nearby Services - قرب الخدمات (JSON)
+  nearbyServices Json? // JSON: {مدارس: "500m", مستشفيات: "1km", مساجد: "200m", أسواق: "300m"}
+
+  // Financial - المالية
+  price         Decimal? @db.Decimal(15, 2) // السعر
+  pricePerMeter Decimal? @db.Decimal(15, 2) // السعر للمتر المربع
+  currency      String?  @default("IQD") // العملة (IQD أو USD)
+
+  // Status - الحالة
+  status PropertyStatus @default(AVAILABLE) // حالة العقار
+
+  // Filters - التصفية
+  propertyGroupFilter PropertyGroupFilter? // نوع المجموعة (بيع/ايجار) - عند الربط بمجموعة عقارية
+  cityCenterFilter    CityCenterFilter? // نوع المركز (مبيعات تجاري، مبيعات سكني، اجارات تجاري، اجارات سكني) - عند الربط بمركز المدينة
+
+  // Media & Documents - الصور والمستندات
+  images    String[] // روابط الصور
+  documents String[] // روابط المستندات
+
+  // Additional Info - معلومات إضافية
+  features String? // المميزات (JSON أو نص)
+  notes    String? // ملاحظات
+
+  // Owner Information - معلومات صاحب العقار
+  ownerName  String? // اسم صاحب العقار
+  ownerPhone String? // رقم هاتف صاحب العقار
+
+  // Relationships - العلاقات
+  groupId      Int? // معرف المجموعة (اختياري)
+  group        PropertyGroup?     @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  cityCenterId Int? // معرف مركز المدينة (اختياري)
+  cityCenter   CityCenter?        @relation("CityCenterProperties", fields: [cityCenterId], references: [id], onDelete: SetNull)
+  sportsCityId Int? // معرف المدينة الرياضية (اختياري)
+  sportsCity   SportsCity?        @relation("SportsCityProperties", fields: [sportsCityId], references: [id], onDelete: SetNull)
+  contracts    PropertyContract[] // العقود المرتبطة بهذا العقار
+
+  // System Fields - حقول النظام
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([groupId])
+  @@index([cityCenterId])
+  @@index([sportsCityId])
+  @@map("properties")
+}
+
+// مركز المدينة - City Center
+model CityCenter {
+  id Int @id @default(autoincrement())
+
+  // Basic Information - المعلومات الأساسية
+  name        String // اسم مركز المدينة
+  description String? // وصف مركز المدينة
+
+  // Location - الموقع
+  city     String? // المدينة
+  district String? // الحي/المنطقة
+  address  String? // العنوان
+
+  // Relationships - العلاقات
+  properties       Property[]        @relation("CityCenterProperties") // العقارات في مركز المدينة
+
+  // System Fields - حقول النظام
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("city_centers")
+}
+
+// المدينة الرياضية - Sports City
+model SportsCity {
+  id Int @id @default(autoincrement())
+
+  // Basic Information - المعلومات الأساسية
+  name        String // اسم المدينة الرياضية
+  description String? // وصف المدينة الرياضية
+
+  // Location - الموقع
+  city     String? // المدينة
+  district String? // الحي/المنطقة
+  address  String? // العنوان
+
+  // Relationships - العلاقات
+  properties       Property[]        @relation("SportsCityProperties") // العقارات في المدينة الرياضية
+
+  // System Fields - حقول النظام
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sports_cities")
+}
+
+enum EntityType {
+  PROPERTY_GROUP // المجمعات السكنية
+  CITY_CENTER // مركز المدينة
+  SPORTS_CITY // المدينة الرياضية
+}
+
+// User Entity Access - إدارة وصول المستخدمين للكيانات
+model UserEntityAccess {
+  id String @id @default(uuid())
+
+  // User Reference
+  userId String // معرف المستخدم
+  user   User   @relation("UserEntityAccesses", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Entity Type (user gets access to ALL entities of this type)
+  entityType EntityType // نوع الكيان
+
+  // System Fields
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, entityType])
+  @@index([userId])
+  @@index([entityType])
+  @@map("user_entity_accesses")
+}
+
+// طلبات العقارات - Property Requests
+model PropertyRequest {
+  id Int @id @default(autoincrement())
+
+  // Reference - المرجع
+  leadId String // معرف العميل المحتمل (Lead)
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  // Basic Information - المعلومات الأساسية
+  title        String // عنوان الطلب
+  description  String? // وصف الطلب
+  propertyType PropertyType? // نوع العقار المطلوب (شقة، فيلا، أرض، إلخ)
+
+  // Request Type - نوع الطلب
+  requestType PropertyRequestType // نوع الطلب (شراء/استئجار)
+
+  // Location - الموقع المفضل
+  city     String? // المدينة
+  district String? // الحي/المنطقة
+  address  String? // العنوان
+
+  // Price Range - نطاق السعر
+  priceMin Decimal? @db.Decimal(15, 2) // السعر الأدنى
+  priceMax Decimal? @db.Decimal(15, 2) // السعر الأعلى
+
+  // Dimensions Range - نطاق الأبعاد
+  lengthMin Decimal? @db.Decimal(10, 2) // الطول الأدنى (متر)
+  lengthMax Decimal? @db.Decimal(10, 2) // الطول الأعلى (متر)
+  widthMin  Decimal? @db.Decimal(10, 2) // العرض الأدنى (متر)
+  widthMax  Decimal? @db.Decimal(10, 2) // العرض الأعلى (متر)
+  heightMin Decimal? @db.Decimal(10, 2) // الارتفاع الأدنى (متر)
+  heightMax Decimal? @db.Decimal(10, 2) // الارتفاع الأعلى (متر)
+
+  // Area Range - نطاق المساحات
+  builtUpAreaMin Decimal? @db.Decimal(15, 2) // مساحة البناء الأدنى
+  builtUpAreaMax Decimal? @db.Decimal(15, 2) // مساحة البناء الأعلى
+  gardenAreaMin  Decimal? @db.Decimal(15, 2) // مساحة الحديقة الأدنى
+  gardenAreaMax  Decimal? @db.Decimal(15, 2) // مساحة الحديقة الأعلى
+
+  // Details Range - نطاق التفاصيل
+  bedroomsMin      Int? // عدد غرف النوم الأدنى
+  bedroomsMax      Int? // عدد غرف النوم الأعلى
+  bathroomsMin     Int? // عدد الحمامات الأدنى
+  bathroomsMax     Int? // عدد الحمامات الأعلى
+  floorsMin        Int? // عدد الطوابق الأدنى
+  floorsMax        Int? // عدد الطوابق الأعلى
+  parkingSpacesMin Int? // عدد مواقف السيارات الأدنى
+  parkingSpacesMax Int? // عدد مواقف السيارات الأعلى
+  elevatorsMin     Int? // عدد المصاعد الأدنى
+  elevatorsMax     Int? // عدد المصاعد الأعلى
+  balconiesMin     Int? // عدد الشرفات الأدنى
+  balconiesMax     Int? // عدد الشرفات الأعلى
+  yearBuiltMin     Int? // سنة البناء الأدنى
+  yearBuiltMax     Int? // سنة البناء الأعلى
+
+  // Additional Preferences - تفضيلات إضافية
+  finishingType String? // نوع التشطيب المفضل
+  view          String? // الإطلالة المفضلة
+  direction     String? // اتجاه العقار المفضل
+
+  // Features - المميزات المطلوبة
+  hasSwimmingPool Boolean? // هل يُفضل وجود مسبح
+  hasGym          Boolean? // هل يُفضل وجود صالة رياضية
+  hasMaidRoom     Boolean? // هل يُفضل وجود غرفة خادمة
+  hasStorage      Boolean? // هل يُفضل وجود مخزن
+
+  // Status - الحالة
+  status RequestStatus @default(PENDING) // حالة الطلب
+
+  // Additional Info - معلومات إضافية
+  notes String? // ملاحظات
+
+  // Contracts - العقود المرتبطة بهذا الطلب
+  contracts PropertyContract[] @relation("RequestToContract")
+
+  // Entity Relationships
+  entityType   EntityType?
+
+  // System Fields - حقول النظام
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leadId])
+  @@index([status])
+  @@index([propertyType])
+  @@index([city])
+  @@index([entityType])
+  @@map("property_requests")
+}
+
+// العقود العقارية - Property Contracts
+model PropertyContract {
+  id             Int     @id @default(autoincrement())
+  contractNumber String? @unique // رقم العقد الفريد (يمكن توليده تلقائياً)
+
+  // References - المراجع
+  propertyId Int
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  leadId     String // معرف العميل المحتمل (Lead) وليس Client
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  // Original Request - الطلب الأصلي
+  requestId Int?
+  request   PropertyRequest? @relation("RequestToContract", fields: [requestId], references: [id], onDelete: SetNull)
+
+  // Contract Details - تفاصيل العقد
+  contractType   ContractType // نوع العقد (بيع/شراء/إيجار/استئجار/استثمار)
+  contractAmount Decimal      @db.Decimal(15, 2) // قيمة العقد
+
+  // Dates - التواريخ
+  startDate DateTime // تاريخ بداية العقد
+  endDate   DateTime? // تاريخ انتهاء العقد (للإيجار)
+
+  // Status - الحالة
+  status ContractStatus @default(DRAFT) // حالة العقد
+
+  // Invoice Link - ربط الفاتورة
+  invoices SalesInvoice[] // الفواتير المرتبطة بالعقد
+
+  // Documents - المستندات (deprecated - use attachments instead)
+  documents String[] // روابط مستندات العقد (legacy)
+
+  // Attachments - المرفقات (صور و PDFs)
+  attachments ContractAttachment[] // المرفقات المرتبطة بالعقد
+
+  // Signatures - التوقيعات
+  signatures ContractSignature[] // توقيعات الأطراف
+
+  // Contract Details and Terms
+  firstPartyName              String?
+  firstPartyAddress           String?
+  firstPartyIdNumber          String?
+  firstPartyPhone             String?
+  secondPartyName             String?
+  secondPartyAddress          String?
+  secondPartyIdNumber         String?
+  secondPartyPhone            String?
+  propertyTypeDetails         String?
+  propertyArea                Decimal? @db.Decimal(15, 2)
+  propertyDistrict            String?
+  propertySequence            String?
+  downpayment                 Decimal? @db.Decimal(15, 2)
+  remainingAmount             Decimal? @db.Decimal(15, 2)
+  firstPartyPenalty           Decimal? @db.Decimal(15, 2)
+  secondPartyPenalty          Decimal? @db.Decimal(15, 2)
+  dischargeFeesResponsibility String?
+  allFeesResponsibility       String?
+  additionalClauses           String?
+
+  // Rental specific fields
+  contractAmountInWriting     String?
+  rentDuration                String?
+  rentPaymentTerms            String?
+  rentRefusalTerms            String?
+  securityDeposit             Decimal? @db.Decimal(15, 2)
+  rentBreachPenalty           Decimal? @db.Decimal(15, 2)
+  rentFeesResponsibility      String?
+  chamberOfCommerceStamp      Boolean  @default(false)
+  agreementDate               DateTime?
+
+  // System Fields - حقول النظام
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([propertyId])
+  @@index([leadId])
+  @@index([status])
+  @@index([contractType])
+  @@map("property_contracts")
+}
+
+// مرفقات العقود - Contract Attachments
+model ContractAttachment {
+  id Int @id @default(autoincrement())
+
+  // Contract Reference
+  contractId Int
+  contract   PropertyContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  // File Information - معلومات الملف
+  fileName String // اسم الملف الأصلي
+  fileUrl  String // رابط الملف الكامل (CDN URL)
+  fileKey  String // Cloudflare R2 object key/path
+  fileSize Int // حجم الملف بالبايت
+  mimetype String // نوع الملف (MIME type)
+
+  // File Type - نوع الملف
+  fileType AttachmentFileType @default(DOCUMENT) // نوع الملف (صورة، PDF، مستند)
+
+  // Description - الوصف
+  title       String? // عنوان المرفق (اختياري)
+  description String? // وصف المرفق (اختياري)
+
+  // Upload Info - معلومات الرفع
+  uploadedById String
+  uploadedBy   User   @relation("ContractAttachmentUploader", fields: [uploadedById], references: [id])
+
+  // System Fields
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([contractId])
+  @@index([fileType])
+  @@index([uploadedById])
+  @@map("contract_attachments")
+}
+
+// أنواع ملفات المرفقات
+enum AttachmentFileType {
+  IMAGE // صورة
+  PDF // ملف PDF
+  DOCUMENT // مستند (Word, Excel, etc.)
+  OTHER // أخرى
+}
+
+// توقيعات العقود - Contract Signatures
+model ContractSignature {
+  id Int @id @default(autoincrement())
+
+  // Contract Reference
+  contractId Int
+  contract   PropertyContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  // Signer Info - معلومات الموقع
+  signerName  String // اسم الموقع
+  signerRole  String // دور الموقع (بائع، مشتري، مؤجر، مستأجر، شاهد، وكيل)
+  signerEmail String? // البريد الإلكتروني
+  signerPhone String? // رقم الهاتف
+
+  // Signature Data
+  signatureUrl String // رابط صورة التوقيع (المرفوعة عبر files endpoint)
+  signedAt     DateTime @default(now()) // تاريخ ووقت التوقيع
+  ipAddress    String? // عنوان IP للتوقيع
+
+  // Order and Status
+  orderIndex Int // ترتيب التوقيع (1، 2، 3...)
+  isRequired Boolean @default(true) // هل التوقيع إلزامي
+  isSigned   Boolean @default(true) // هل تم التوقيع (true عند الإنشاء)
+
+  // Additional Info
+  notes String? // ملاحظات
+
+  // System Fields
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([contractId])
+  @@index([signerRole])
+  @@map("contract_signatures")
+}
+
+// ===== SALES MODULE (Odoo-Style) =====
+
+enum SaleType {
+  QUOTATION // Full workflow (Quotation → Sales Order → Delivery → Invoice)
+  DIRECT // One-step sale (immediate stock deduction)
+}
+
+enum SaleStatus {
+  DRAFT // Quotation created, not sent
+  SENT // Quotation sent to customer
+  CONFIRMED // Quotation confirmed → stock reserved
+  COMPLETED // Sale completed (direct or after delivery)
+  CANCELLED // Cancelled
+  PARTIAL // Partial delivery done
+}
+
+enum SalePaymentStatus {
+  PENDING
+  PAID
+  PARTIAL_PAYMENT
+  REFUNDED
+}
+
+enum SaleDeliveryStatus {
+  DRAFT
+  READY
+  DONE
+  CANCELLED
+}
+
+model Sale {
+  id       Int        @id @default(autoincrement())
+  name     String     @unique // e.g., SO-0001 or DS-0001
+  saleType SaleType   @default(QUOTATION)
+  status   SaleStatus @default(DRAFT)
+
+  // Customer (optional for walk-in direct sales)
+  clientId Int?
+  client   Client? @relation(fields: [clientId], references: [id])
+
+  // Warehouse for stock operations
+  warehouseId Int
+
+  // Dates
+  dateOrder     DateTime  @default(now())
+  dateConfirmed DateTime?
+  dateCompleted DateTime?
+
+  // For QUOTATION type
+  validityDate DateTime?
+
+  // For DIRECT type - payment info
+  paymentMethod String? // cash, card, transfer
+  paymentStatus SalePaymentStatus @default(PENDING)
+
+  // Amounts
+  amountUntaxed Decimal      @default(0) @db.Decimal(15, 2)
+  taxRate       Decimal      @default(0) @db.Decimal(5, 2) // Tax percentage
+  amountTax     Decimal      @default(0) @db.Decimal(15, 2)
+  amountTotal   Decimal      @default(0) @db.Decimal(15, 2)
+  discount      Decimal      @default(0) @db.Decimal(15, 2) // Total discount
+  discountType  DiscountType @default(FIXED)
+
+  notes String?
+
+  // Creator
+  userId String?
+  user   User?   @relation("SaleCreator", fields: [userId], references: [id])
+
+  // Relations
+  items      SaleItem[]
+  deliveries SaleDelivery[]
+
+  // Link to warehouse transactions for stock moves
+  warehouseTransactionId Int? // Main transaction created for this sale
+
+  // System fields
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([saleType])
+  @@index([status])
+  @@index([clientId])
+  @@index([dateOrder])
+  @@map("sales")
+}
+
+model SaleItem {
+  id                Int          @id @default(autoincrement())
+  saleId            Int
+  sale              Sale         @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId         Int
+  product           Product      @relation(fields: [productId], references: [id])
+  quantity          Decimal      @db.Decimal(15, 3)
+  quantityDelivered Decimal      @default(0) @db.Decimal(15, 3)
+  unitPrice         Decimal      @db.Decimal(15, 2)
+  discount          Decimal      @default(0) @db.Decimal(15, 2) // Per-item discount
+  discountType      DiscountType @default(FIXED)
+  subtotal          Decimal      @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([saleId])
+  @@index([productId])
+  @@map("sale_items")
+}
+
+model SaleDelivery {
+  id     Int                @id @default(autoincrement())
+  name   String             @unique // e.g., DEL-0001
+  saleId Int
+  sale   Sale               @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  date   DateTime           @default(now())
+  status SaleDeliveryStatus @default(DRAFT)
+  notes  String?
+
+  // Link to the warehouse transaction created when delivery is validated
+  warehouseTransactionId Int?
+
+  // System fields
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([saleId])
+  @@index([status])
+  @@map("sale_deliveries")
+}

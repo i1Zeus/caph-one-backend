@@ -1,0 +1,91 @@
+### Business Templates API Examples
+### استخدم هذا الملف لاختبار API الخاص بالقوالب المحاسبية
+
+### 1. جلب جميع القوالب المتاحة
+GET {{baseUrl}}/accounting/accounts/templates
+Authorization: Bearer {{token}}
+
+### 2. جلب قالب محدد - محل تجاري
+GET {{baseUrl}}/accounting/accounts/templates/retail-store
+Authorization: Bearer {{token}}
+
+### 3. جلب قالب محدد - مقهى
+GET {{baseUrl}}/accounting/accounts/templates/cafe
+Authorization: Bearer {{token}}
+
+### 4. جلب قالب محدد - متجر إلكتروني
+GET {{baseUrl}}/accounting/accounts/templates/ecommerce
+Authorization: Bearer {{token}}
+
+### 5. التحقق من وجود حسابات
+GET {{baseUrl}}/accounting/accounts/check-empty
+Authorization: Bearer {{token}}
+
+### 6. تطبيق قالب محل تجاري
+POST {{baseUrl}}/accounting/accounts/templates/apply
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "templateId": "retail-store"
+}
+
+### 7. تطبيق قالب مقهى مع بادئة مخصصة
+POST {{baseUrl}}/accounting/accounts/templates/apply
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "templateId": "cafe",
+  "customPrefix": "C1"
+}
+
+### 8. تطبيق قالب متجر إلكتروني
+POST {{baseUrl}}/accounting/accounts/templates/apply
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "templateId": "ecommerce"
+}
+
+### 9. تطبيق قالب مطعم
+POST {{baseUrl}}/accounting/accounts/templates/apply
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "templateId": "restaurant"
+}
+
+### 10. تطبيق قالب عيادة طبية
+POST {{baseUrl}}/accounting/accounts/templates/apply
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "templateId": "clinic"
+}
+
+### 11. تطبيق قالب ورشة سيارات
+POST {{baseUrl}}/accounting/accounts/templates/apply
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "templateId": "auto-shop"
+}
+
+### 12. تطبيق قالب صالون تجميل
+POST {{baseUrl}}/accounting/accounts/templates/apply
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "templateId": "beauty-salon"
+}
+
+### Variables
+### قم بتعديل هذه المتغيرات حسب بيئتك
+@baseUrl = http://localhost:3000
+@token = your_jwt_token_here
