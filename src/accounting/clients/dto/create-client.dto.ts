@@ -22,10 +22,6 @@ export class CreateClientDto {
   address?: string;
 
   @IsOptional()
-  @IsString()
-  dateOfBirth?: string;
-
-  @IsOptional()
   @IsEnum(ClientType)
   type?: ClientType; // نوع العميل: CUSTOMER أو SUPPLIER
 

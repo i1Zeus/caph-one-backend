@@ -33,10 +33,6 @@ export class CreateLeadDto {
 
   @IsString()
   @IsOptional()
-  dateOfBirth?: string;
-
-  @IsString()
-  @IsOptional()
   description?: string;
 
   @IsString()
@@ -86,8 +82,4 @@ export class CreateLeadDto {
   @IsString()
   @IsOptional()
   stageId?: string;
-
-  @IsBoolean()
-  @IsOptional()
-  sendWelcomeMessage?: boolean;
 }

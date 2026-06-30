@@ -90,15 +90,7 @@ export class FilesController {
   @Get('entity/:entityType/:entityId')
   // Inherited: files:read
   async getFilesByEntity(
-    @Param('entityType')
-    entityType:
-      | 'project'
-      | 'task'
-      | 'comment'
-      | 'workspace'
-      | 'contract'
-      | 'property'
-      | 'lead',
+    @Param('entityType') entityType: 'project' | 'task' | 'comment',
     @Param('entityId') entityId: string,
   ) {
     const dto: GetFilesByEntityDto = { entityType, entityId };
@@ -117,15 +109,7 @@ export class FilesController {
   @Get('stats/:entityType/:entityId')
   // Inherited: files:read
   async getFileStatsByEntity(
-    @Param('entityType')
-    entityType:
-      | 'project'
-      | 'task'
-      | 'comment'
-      | 'workspace'
-      | 'contract'
-      | 'property'
-      | 'lead',
+    @Param('entityType') entityType: 'project' | 'task' | 'comment',
     @Param('entityId') entityId: string,
   ) {
     return this.filesService.getFileStats(entityType, entityId);

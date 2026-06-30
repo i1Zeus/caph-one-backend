@@ -36,34 +36,29 @@ enum DocumentType {
 ## 🚀 الميزات الرئيسية
 
 ### ✅ 1. رفع الوثائق
-
 - رفع ملفات متعددة الأنواع (PDF, Images, Word, Excel)
 - حد أقصى للملف: 10MB
 - تخزين آمن على Cloudflare R2
 - تنظيم تلقائي: `employees/{employeeId}/documents/{filename}`
 
 ### ✅ 2. إدارة الوثائق
-
 - إضافة تواريخ الإصدار والانتهاء
 - تصنيف حسب النوع
 - إضافة ملاحظات ووصف لكل وثيقة
 - تحديث معلومات الوثيقة بدون تغيير الملف
 
 ### ✅ 3. البحث والتصفية
-
 - البحث بالعنوان أو الوصف
 - التصفية حسب نوع الوثيقة
 - التصفية حسب الموظف
 - الترتيب حسب التاريخ أو الاسم
 
 ### ✅ 4. التنبيهات الذكية
-
 - تنبيه للوثائق القريبة من الانتهاء
 - عرض الوثائق المنتهية الصلاحية
 - إمكانية تحديد عدد الأيام للتنبيه
 
 ### ✅ 5. الإحصائيات
-
 - عدد الوثائق لكل موظف
 - حجم الملفات الإجمالي
 - توزيع الوثائق حسب النوع
@@ -73,7 +68,6 @@ enum DocumentType {
 ## 📡 API Endpoints
 
 ### 1. رفع وثيقة جديدة
-
 ```http
 POST /hr/employee-documents
 Content-Type: multipart/form-data
@@ -90,7 +84,6 @@ Body (form-data):
 ```
 
 **مثال (cURL):**
-
 ```bash
 curl -X POST http://localhost:3000/hr/employee-documents \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -104,13 +97,11 @@ curl -X POST http://localhost:3000/hr/employee-documents \
 ```
 
 ### 2. الحصول على جميع الوثائق (مع تصفية)
-
 ```http
 GET /hr/employee-documents?employeeId={id}&type={type}&search={term}&page=1&limit=20
 ```
 
 **Query Parameters:**
-
 - `employeeId` (optional): معرف الموظف
 - `type` (optional): نوع الوثيقة
 - `search` (optional): البحث في العنوان/الوصف/اسم الملف
@@ -120,19 +111,16 @@ GET /hr/employee-documents?employeeId={id}&type={type}&search={term}&page=1&limi
 - `sortOrder` (optional, default: desc): asc أو desc
 
 ### 3. الحصول على وثائق موظف معين
-
 ```http
 GET /hr/employee-documents/employee/{employeeId}
 ```
 
 ### 4. الحصول على وثيقة واحدة
-
 ```http
 GET /hr/employee-documents/{documentId}
 ```
 
 ### 5. تحديث معلومات الوثيقة
-
 ```http
 PUT /hr/employee-documents/{documentId}
 Content-Type: application/json
@@ -148,19 +136,16 @@ Body:
 ```
 
 ### 6. حذف وثيقة
-
 ```http
 DELETE /hr/employee-documents/{documentId}
 ```
 
 ### 7. الإحصائيات
-
 ```http
 GET /hr/employee-documents/stats?employeeId={id}
 ```
 
 **Response:**
-
 ```json
 {
   "totalDocuments": 45,
@@ -174,13 +159,11 @@ GET /hr/employee-documents/stats?employeeId={id}
 ```
 
 ### 8. الوثائق القريبة من الانتهاء
-
 ```http
 GET /hr/employee-documents/expiring?daysBeforeExpiry=30
 ```
 
 ### 9. الوثائق المنتهية
-
 ```http
 GET /hr/employee-documents/expired
 ```
@@ -204,9 +187,9 @@ formData.append('expiryDate', '2026-01-01');
 const response = await fetch('/hr/employee-documents', {
   method: 'POST',
   headers: {
-    Authorization: `Bearer ${token}`,
+    'Authorization': `Bearer ${token}`
   },
-  body: formData,
+  body: formData
 });
 
 const document = await response.json();
@@ -219,8 +202,8 @@ console.log('Document uploaded:', document);
 const employeeId = 'employee-uuid';
 const response = await fetch(`/hr/employee-documents/employee/${employeeId}`, {
   headers: {
-    Authorization: `Bearer ${token}`,
-  },
+    'Authorization': `Bearer ${token}`
+  }
 });
 
 const documents = await response.json();
@@ -234,13 +217,13 @@ const params = new URLSearchParams({
   type: 'CERTIFICATE',
   search: 'شهادة',
   page: '1',
-  limit: '10',
+  limit: '10'
 });
 
 const response = await fetch(`/hr/employee-documents?${params}`, {
   headers: {
-    Authorization: `Bearer ${token}`,
-  },
+    'Authorization': `Bearer ${token}`
+  }
 });
 
 const { documents, pagination } = await response.json();
@@ -251,15 +234,15 @@ const { documents, pagination } = await response.json();
 ```typescript
 const response = await fetch('/hr/employee-documents/expired', {
   headers: {
-    Authorization: `Bearer ${token}`,
-  },
+    'Authorization': `Bearer ${token}`
+  }
 });
 
 const { documents, count } = await response.json();
 
 if (count > 0) {
   console.warn(`تحذير: ${count} وثيقة منتهية الصلاحية`);
-  documents.forEach((doc) => {
+  documents.forEach(doc => {
     console.log(`- ${doc.employee.firstName}: ${doc.title}`);
   });
 }
@@ -270,7 +253,6 @@ if (count > 0) {
 ## 🔒 الأمان والصلاحيات
 
 ### متطلبات الأمان:
-
 1. جميع الـ endpoints محمية بـ `@Auth()` decorator
 2. يجب تسجيل الدخول للوصول لأي endpoint
 3. الملفات المرفوعة محدودة بـ:
@@ -278,7 +260,6 @@ if (count > 0) {
    - الأنواع: PDF, Images, Word, Excel فقط
 
 ### أنواع الملفات المسموحة:
-
 ```typescript
 const allowedMimeTypes = [
   'application/pdf',
@@ -299,13 +280,12 @@ const allowedMimeTypes = [
 ## 🗄️ قاعدة البيانات
 
 ### Schema:
-
 ```prisma
 model EmployeeDocument {
   id           String       @id @default(uuid())
   employeeId   String
   employee     Employee     @relation("EmployeeDocuments", fields: [employeeId], references: [id], onDelete: Cascade)
-
+  
   type         DocumentType
   title        String
   description  String?
@@ -314,17 +294,17 @@ model EmployeeDocument {
   fileName     String
   fileSize     Int?
   mimetype     String?
-
+  
   issueDate    DateTime?
   expiryDate   DateTime?
-
+  
   uploadedById String
   uploadedBy   User         @relation("UploadedEmployeeDocuments", fields: [uploadedById], references: [id])
-
+  
   isDeleted    Boolean      @default(false)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-
+  
   @@index([employeeId])
   @@index([type])
   @@index([expiryDate])
@@ -332,7 +312,6 @@ model EmployeeDocument {
 ```
 
 ### Migration:
-
 ```bash
 # إنشاء migration جديد
 npx prisma migrate dev --name add_employee_documents
@@ -349,7 +328,6 @@ npx prisma generate
 ## 📊 Use Cases
 
 ### 1. نظام تنبيه للوثائق المنتهية
-
 ```typescript
 // Cron Job - تشغيل يومي
 @Cron('0 9 * * *') // كل يوم الساعة 9 صباحاً
@@ -357,7 +335,7 @@ async checkExpiringDocuments() {
   const { documents } = await this.documentsService.getExpiringDocuments({
     daysBeforeExpiry: 30
   });
-
+  
   // إرسال إشعارات للموظفين والـ HR
   for (const doc of documents) {
     await this.notificationService.send({
@@ -370,7 +348,6 @@ async checkExpiringDocuments() {
 ```
 
 ### 2. لوحة تحكم الوثائق
-
 ```typescript
 async getDocumentsDashboard() {
   const [stats, expiring, expired] = await Promise.all([
@@ -378,7 +355,7 @@ async getDocumentsDashboard() {
     this.documentsService.getExpiringDocuments({ daysBeforeExpiry: 30 }),
     this.documentsService.getExpiredDocuments(),
   ]);
-
+  
   return {
     totalDocuments: stats.totalDocuments,
     totalSize: stats.totalSize,
@@ -391,7 +368,6 @@ async getDocumentsDashboard() {
 ```
 
 ### 3. ملف شخصي للموظف مع الوثائق
-
 ```typescript
 async getEmployeeProfile(employeeId: string) {
   const [employee, documents, stats] = await Promise.all([
@@ -399,7 +375,7 @@ async getEmployeeProfile(employeeId: string) {
     this.documentsService.findByEmployee(employeeId),
     this.documentsService.getDocumentStats(employeeId),
   ]);
-
+  
   return {
     ...employee,
     documents: {
@@ -428,21 +404,16 @@ async getEmployeeProfile(employeeId: string) {
 ## 🐛 استكشاف الأخطاء
 
 ### خطأ: "File size exceeds 10MB limit"
-
 **الحل:** قلل حجم الملف أو اضغطه قبل الرفع
 
 ### خطأ: "File type not allowed"
-
 **الحل:** تأكد أن الملف من الأنواع المسموحة (PDF, Images, Word, Excel)
 
 ### خطأ: "Employee not found"
-
 **الحل:** تأكد من صحة `employeeId` وأن الموظف غير محذوف
 
 ### خطأ: "Failed to upload document"
-
 **الحل:** تأكد من إعدادات Cloudflare R2 في `.env`:
-
 ```env
 CLOUDFLARE_R2_ENDPOINT=https://...
 CLOUDFLARE_R2_ACCESS_KEY_ID=...
@@ -459,4 +430,5 @@ CLOUDFLARE_R2_PUBLIC_URL=https://...
 
 ---
 
-**تم التطوير بـ ❤️ لنظام iZeus ERP**
+**تم التطوير بـ ❤️ لنظام DevHouse ERP**
+

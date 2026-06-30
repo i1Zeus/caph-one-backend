@@ -1,6 +1,6 @@
 # Audit System - Quick Start Guide
 
-The audit system is now fully integrated into your iZeus ERP backend! Here's how to start using it immediately.
+The audit system is now fully integrated into your DevHouse ERP backend! Here's how to start using it immediately.
 
 ## ✅ What's Already Done
 
@@ -212,7 +212,7 @@ const stats = await api.get('/audit/statistics?days=30');
   "createdAt": "2024-01-15T10:30:00Z",
   "user": {
     "name": "Admin User",
-    "email": "admin@iZeus.com"
+    "email": "admin@devhouse.com"
   }
 }
 ```

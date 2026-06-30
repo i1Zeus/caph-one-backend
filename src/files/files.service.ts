@@ -66,14 +66,7 @@ export class FilesService {
   async uploadFile(
     file: Express.Multer.File,
     uploadedById: string,
-    entityType?:
-      | 'project'
-      | 'task'
-      | 'comment'
-      | 'workspace'
-      | 'contract'
-      | 'property'
-      | 'lead',
+    entityType?: 'project' | 'task' | 'comment' | 'workspace',
     entityId?: string,
   ) {
     try {

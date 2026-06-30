@@ -1,15 +1,15 @@
-import { WarehouseTransactionType } from '@prisma/client';
-import { Type } from 'class-transformer';
 import {
-  IsArray,
   IsEnum,
   IsNumber,
   IsOptional,
-  IsPositive,
   IsString,
-  Min,
+  IsPositive,
+  IsArray,
   ValidateNested,
+  Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { WarehouseTransactionType } from '@prisma/client';
 import { WarehouseTransactionItemDto } from './warehouse-transaction-item.dto';
 
 export class CreateWarehouseTransactionDto {

@@ -1,6 +1,6 @@
 # Notification Services
 
-This module provides email and WhatsApp notification services for the iZeus ERP system.
+This module provides email and WhatsApp notification services for the DevHouse ERP system.
 
 ## Features
 

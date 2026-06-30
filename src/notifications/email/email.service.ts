@@ -111,7 +111,7 @@ export class EmailService {
         this.configService.get<string>('GMAIL_USER');
       const fromName = this.configService.get<string>(
         'EMAIL_FROM_NAME',
-        'iZeus ERP',
+        'DevHouse ERP',
       );
 
       const mailOptions = {
@@ -138,16 +138,16 @@ export class EmailService {
   async sendWelcomeEmail(to: string, userName: string): Promise<boolean> {
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Welcome to iZeus ERP!</h2>
+        <h2>Welcome to DevHouse ERP!</h2>
         <p>Hi ${userName},</p>
         <p>Welcome to our project management system. You can now access your dashboard and start collaborating with your team.</p>
-        <p>Best regards,<br>iZeus Team</p>
+        <p>Best regards,<br>DevHouse Team</p>
       </div>
     `;
 
     return this.sendEmail({
       to,
-      subject: 'Welcome to iZeus ERP',
+      subject: 'Welcome to DevHouse ERP',
       html: htmlContent,
     });
   }
@@ -168,7 +168,7 @@ export class EmailService {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
         <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #2563eb; margin: 0; font-size: 28px;">iZeus ERP</h1>
+            <h1 style="color: #2563eb; margin: 0; font-size: 28px;">DevHouse ERP</h1>
             <p style="color: #6b7280; margin: 5px 0 0 0;">Project Management System</p>
           </div>
 
@@ -177,7 +177,7 @@ export class EmailService {
           <p style="color: #374151; line-height: 1.6; margin-bottom: 20px;">Hi ${userName},</p>
 
           <p style="color: #374151; line-height: 1.6; margin-bottom: 20px;">
-            You've been invited to join iZeus ERP! We're excited to have you on board and start collaborating on projects together.
+            You've been invited to join DevHouse ERP! We're excited to have you on board and start collaborating on projects together.
           </p>
 
           <div style="background-color: #f3f4f6; padding: 20px; border-radius: 6px; margin: 25px 0;">
@@ -207,7 +207,7 @@ export class EmailService {
 
           <p style="color: #6b7280; font-size: 14px; margin: 0;">
             Best regards,<br>
-            <strong>iZeus Team</strong>
+            <strong>DevHouse Team</strong>
           </p>
         </div>
 
@@ -219,7 +219,7 @@ export class EmailService {
 
     return this.sendEmail({
       to,
-      subject: '🎉 Welcome to iZeus ERP - Your Account is Ready!',
+      subject: '🎉 Welcome to DevHouse ERP - Your Account is Ready!',
       html: htmlContent,
     });
   }
@@ -244,7 +244,7 @@ export class EmailService {
         </div>
         ${taskLinkHtml}
         <p>Please check your dashboard for more details and start working on the task.</p>
-        <p>Best regards,<br>iZeus Team</p>
+        <p>Best regards,<br>DevHouse Team</p>
       </div>
     `;
 
@@ -275,7 +275,7 @@ export class EmailService {
         </div>
         ${taskLinkHtml}
         <p>Check your dashboard for more details.</p>
-        <p>Best regards,<br>iZeus Team</p>
+        <p>Best regards,<br>DevHouse Team</p>
       </div>
     `;
 
@@ -320,14 +320,14 @@ export class EmailService {
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Password Reset Request</h2>
-        <p>You requested a password reset for your iZeus ERP account.</p>
+        <p>You requested a password reset for your DevHouse ERP account.</p>
         <p>Click the button below to reset your password:</p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${resetUrl}" style="background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
         </div>
         <p>This link will expire in 24 hours.</p>
         <p>If you didn't request this reset, please ignore this email.</p>
-        <p>Best regards,<br>iZeus Team</p>
+        <p>Best regards,<br>DevHouse Team</p>
       </div>
     `;
 

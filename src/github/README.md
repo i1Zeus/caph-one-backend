@@ -10,7 +10,7 @@ You need to set up the following environment variables in your `.env` file:
 # Required: Your GitHub Personal Access Token
 GITHUB_TOKEN=your_github_personal_access_token_here
 
-# Optional: GitHub Organization Name (defaults to 'izeus-org')
+# Optional: GitHub Organization Name (defaults to 'devhouse-org')
 GITHUB_ORG_NAME=your-organization-name
 ```
 
@@ -30,7 +30,6 @@ GITHUB_ORG_NAME=your-organization-name
 Returns a list of all repositories in your organization.
 
 **Response:**
-
 ```json
 {
   "success": true,
@@ -41,11 +40,11 @@ Returns a list of all repositories in your organization.
       {
         "id": 123456,
         "name": "example-repo",
-        "fullName": "izeus-org/example-repo",
+        "fullName": "devhouse-org/example-repo",
         "description": "Repository description",
         "private": false,
-        "htmlUrl": "https://github.com/izeus-org/example-repo",
-        "cloneUrl": "https://github.com/izeus-org/example-repo.git",
+        "htmlUrl": "https://github.com/devhouse-org/example-repo",
+        "cloneUrl": "https://github.com/devhouse-org/example-repo.git",
         "language": "TypeScript",
         "forksCount": 5,
         "stargazersCount": 12,
@@ -65,7 +64,6 @@ Returns a list of all repositories in your organization.
 Creates a new issue in a specified repository.
 
 **Request Body:**
-
 ```json
 {
   "title": "Bug: Application crashes on startup",
@@ -75,7 +73,6 @@ Creates a new issue in a specified repository.
 ```
 
 **Optional fields:**
-
 ```json
 {
   "title": "Bug: Application crashes on startup",
@@ -87,7 +84,6 @@ Creates a new issue in a specified repository.
 ```
 
 **Response:**
-
 ```json
 {
   "success": true,
@@ -98,7 +94,7 @@ Creates a new issue in a specified repository.
     "title": "Bug: Application crashes on startup",
     "body": "The application crashes when starting up with the following error...",
     "state": "open",
-    "htmlUrl": "https://github.com/izeus-org/example-repo/issues/42",
+    "htmlUrl": "https://github.com/devhouse-org/example-repo/issues/42",
     "assignee": "username",
     "labels": ["bug", "high-priority"],
     "createdAt": "2023-12-01T12:00:00Z",
@@ -110,18 +106,15 @@ Creates a new issue in a specified repository.
 ## Testing with Postman
 
 ### 1. Test Get Repositories
-
 - Method: GET
 - URL: `http://localhost:3000/github/repositories`
 - Headers: (none required)
 
 ### 2. Test Create Issue
-
 - Method: POST
 - URL: `http://localhost:3000/github/issues`
 - Headers: `Content-Type: application/json`
 - Body:
-
 ```json
 {
   "title": "Test Issue from ERP",
@@ -133,7 +126,6 @@ Creates a new issue in a specified repository.
 ## Error Handling
 
 The module includes comprehensive error handling:
-
 - Invalid GitHub token
 - Repository not found
 - Permission issues
@@ -144,9 +136,8 @@ All errors are logged and returned with appropriate HTTP status codes and error 
 ## Usage in ERP
 
 This integration allows you to:
-
 1. View all your organization's repositories
 2. Create GitHub issues directly from tasks in your ERP system
 3. Link ERP tasks with GitHub issues for better project management
 
-The module is designed to be easily extended for additional GitHub features like updating issues, adding comments, or managing labels.
+The module is designed to be easily extended for additional GitHub features like updating issues, adding comments, or managing labels. 

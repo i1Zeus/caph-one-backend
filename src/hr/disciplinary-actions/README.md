@@ -28,7 +28,6 @@ disciplinary-actions/
 ## ✨ المميزات
 
 ### 🎯 الأنواع (8 أنواع)
-
 - ⚠️ إنذار شفهي
 - 📝 إنذار كتابي
 - 🚨 إنذار نهائي
@@ -39,14 +38,12 @@ disciplinary-actions/
 - 📋 ملاحظة
 
 ### 📊 مستويات الخطورة (4 مستويات)
-
 - 🟢 LOW - بسيط
 - 🟡 MEDIUM - متوسط
 - 🟠 HIGH - عالي
 - 🔴 CRITICAL - حرج جداً
 
 ### 📑 الفئات (8 فئات)
-
 - BEHAVIORAL - سلوكي
 - ATTENDANCE - الحضور
 - PERFORMANCE - الأداء
@@ -57,7 +54,6 @@ disciplinary-actions/
 - OTHER - أخرى
 
 ### 🔄 الحالات (4 حالات)
-
 - ACTIVE - نشط
 - RESOLVED - تم حله
 - APPEALED - تم الاستئناف
@@ -68,7 +64,6 @@ disciplinary-actions/
 ## 🚀 البدء السريع
 
 ### 1. إنشاء إجراء تأديبي
-
 ```bash
 curl -X POST http://localhost:3000/hr/disciplinary-actions \
   -H "Authorization: Bearer TOKEN" \
@@ -85,14 +80,12 @@ curl -X POST http://localhost:3000/hr/disciplinary-actions \
 ```
 
 ### 2. الحصول على سجل موظف
-
 ```bash
 curl http://localhost:3000/hr/disciplinary-actions/employee/{employeeId}/history \
   -H "Authorization: Bearer TOKEN"
 ```
 
 ### 3. الإجراءات الحرجة
-
 ```bash
 curl http://localhost:3000/hr/disciplinary-actions/critical \
   -H "Authorization: Bearer TOKEN"
@@ -121,12 +114,11 @@ DELETE /hr/disciplinary-actions/:id                   - حذف إجراء
 ## 🎨 Use Cases
 
 ### 1. نظام التصعيد الآلي
-
 ```typescript
 async function handleLateArrival(employeeId: string) {
   // احسب عدد مرات التأخير هذا الشهر
   const lateCount = await countLateArrivals(employeeId);
-
+  
   if (lateCount === 1) {
     // إنذار شفهي
     await createAction({
@@ -134,7 +126,7 @@ async function handleLateArrival(employeeId: string) {
       severity: 'LOW',
       category: 'ATTENDANCE',
       title: 'تأخير عن العمل - المرة الأولى',
-      reason: `تأخر عن العمل (${lateCount} مرة هذا الشهر)`,
+      reason: `تأخر عن العمل (${lateCount} مرة هذا الشهر)`
     });
   } else if (lateCount === 3) {
     // إنذار كتابي
@@ -143,7 +135,7 @@ async function handleLateArrival(employeeId: string) {
       severity: 'MEDIUM',
       category: 'ATTENDANCE',
       title: 'تأخير متكرر',
-      reason: `تأخر عن العمل (${lateCount} مرات هذا الشهر)`,
+      reason: `تأخر عن العمل (${lateCount} مرات هذا الشهر)`
     });
   } else if (lateCount === 5) {
     // خصم من الراتب
@@ -153,32 +145,31 @@ async function handleLateArrival(employeeId: string) {
       category: 'ATTENDANCE',
       title: 'تأخير مستمر',
       reason: `تأخر عن العمل (${lateCount} مرات هذا الشهر)`,
-      deductionDays: 1,
+      deductionDays: 1
     });
   }
 }
 ```
 
 ### 2. تقرير أسبوعي للـ HR
-
 ```typescript
 async function weeklyHRReport() {
   const lastWeek = {
     startDate: getLastWeekStart(),
-    endDate: getLastWeekEnd(),
+    endDate: getLastWeekEnd()
   };
-
+  
   const [actions, stats, critical] = await Promise.all([
     findAll({ startDate: lastWeek.startDate, endDate: lastWeek.endDate }),
     getStats(),
-    getCriticalActions(),
+    getCriticalActions()
   ]);
-
+  
   return {
     summary: `${actions.total} إجراء جديد الأسبوع الماضي`,
     actions: actions.actions,
     criticalCount: critical.length,
-    mostCommonCategory: findMostCommon(stats.byCategory),
+    mostCommonCategory: findMostCommon(stats.byCategory)
   };
 }
 ```
@@ -188,14 +179,12 @@ async function weeklyHRReport() {
 ## 🔧 الإعداد والتثبيت
 
 ### Migration
-
 ```bash
 npx prisma migrate dev --name add_disciplinary_actions_system
 npx prisma generate
 ```
 
 ### Integration
-
 النظام مُدمج تلقائياً في HR Module ✅
 
 ---
@@ -207,4 +196,5 @@ npx prisma generate
 
 ---
 
-**صُنع بـ ❤️ من أجل iZeus ERP System**
+**صُنع بـ ❤️ من أجل DevHouse ERP System**
+

@@ -1,5 +1,5 @@
+import { IsOptional, IsString, IsEnum, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { DocumentType } from './create-employee-document.dto';
 
 export class GetEmployeeDocumentsDto {

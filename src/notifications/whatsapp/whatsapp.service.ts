@@ -155,7 +155,7 @@ export class WhatsAppService {
   }
 
   async sendWelcomeMessage(to: string, userName: string): Promise<boolean> {
-    const message = `Welcome to iZeus ERP, ${userName}! 🎉
+    const message = `Welcome to DevHouse ERP, ${userName}! 🎉
 
 Thank you for joining our project management system. You can now:
 
@@ -167,26 +167,7 @@ Thank you for joining our project management system. You can now:
 Get started by logging into your account.
 
 Best regards,
-iZeus Team`;
-
-    return this.sendTextMessage(to, message);
-  }
-
-  async sendLeadWelcomeMessage(
-    to: string,
-    leadName: string,
-    companyName?: string,
-  ): Promise<boolean> {
-    const companyInfo = companyName ? ` (${companyName})` : '';
-    const message = `✨ *مرحباً بك!* | *Welcome!* ✨
-
-عزيزنا *${leadName}* ${companyInfo}، 👋
-يسعدنا تواصلك معنا واهتمامك بخدماتنا. لقد تم تسجيل طلبك بنجاح في نظام إدارة علاقات العملاء لدينا.
-
----
-
-Dear *${leadName}* ${companyInfo}, 👋
-We are thrilled to connect with you! We have received your inquiry and successfully added your details to our CRM system.`;
+DevHouse Team`;
 
     return this.sendTextMessage(to, message);
   }
@@ -202,7 +183,7 @@ We are thrilled to connect with you! We have received your inquiry and successfu
     const defaultLoginUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const actualLoginUrl = loginUrl || `${defaultLoginUrl}/auth/login`;
 
-    const message = `🎉 *Welcome to iZeus ERP!*
+    const message = `🎉 *Welcome to DevHouse ERP!*
 
 Hi ${userName},
 
@@ -217,7 +198,7 @@ ${actualLoginUrl}
 
 ⚠️ *Important:* Please change your password after your first login for security.
 
-📱 With iZeus ERP you can:
+📱 With DevHouse ERP you can:
 • 📊 Manage projects and tasks
 • 👥 Collaborate with team members
 • 📈 Track progress in real-time
@@ -226,7 +207,7 @@ ${actualLoginUrl}
 Need help? Just reply to this message!
 
 Best regards,
-*iZeus Team* 🏢`;
+*DevHouse Team* 🏢`;
 
     return this.sendTextMessage(to, message);
   }
@@ -252,7 +233,7 @@ You have been assigned a new task:
 Please check your dashboard for more details and start working on it.${taskLink}
 
 Best regards,
-iZeus Team`;
+DevHouse Team`;
 
     return this.sendTextMessage(to, message);
   }
@@ -278,7 +259,7 @@ Task status has been updated:
 Check your dashboard for more details.${taskLink}
 
 Best regards,
-iZeus Team`;
+DevHouse Team`;
 
     return this.sendTextMessage(to, message);
   }
@@ -323,7 +304,7 @@ ${updateMessage}
 Check your dashboard for full details.
 
 Best regards,
-iZeus Team`;
+DevHouse Team`;
 
     return this.sendTextMessage(to, message);
   }
@@ -342,7 +323,7 @@ ${reminderMessage}
 Don't forget to check your dashboard for updates.
 
 Best regards,
-iZeus Team`;
+DevHouse Team`;
 
     return this.sendTextMessage(to, message);
   }
@@ -370,7 +351,7 @@ Your task is approaching its deadline:
 Please complete the task before the deadline.${taskLink}
 
 Best regards,
-iZeus Team`;
+DevHouse Team`;
 
     return this.sendTextMessage(to, message);
   }
@@ -393,21 +374,7 @@ Great news! A milestone has been reached:
 Congratulations on the progress! 🎉
 
 Best regards,
-iZeus Team`;
-
-    return this.sendTextMessage(to, message);
-  }
-
-  async sendBirthdayGreeting(to: string, name: string): Promise<boolean> {
-    const message = `🎂🎉 *كل عام وأنت بخير!*
-
-مرحباً ${name}! 👋
-
-بمناسبة عيد ميلادك، نتمنى لك عاماً سعيداً مليئاً بالنجاح والصحة والسعادة! 🎊
-
-🌟 أنت شخص مميز بالنسبة لنا، ونحن سعداء بوجودك معنا.
-
-أطيب التحيات والأمنيات،`;
+DevHouse Team`;
 
     return this.sendTextMessage(to, message);
   }

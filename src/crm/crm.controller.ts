@@ -13,7 +13,6 @@ import {
 } from '@nestjs/common';
 import { AutoAudit } from '../audit/interceptors/audit.interceptor';
 import { Auth } from '../auth';
-import { WhatsAppService } from '../notifications/whatsapp/whatsapp.service';
 import { CrmService } from './crm.service';
 import {
   CreateLeadDto,
@@ -25,10 +24,7 @@ import {
 @Controller('crm')
 @AutoAudit('CRM')
 export class CrmController {
-  constructor(
-    private readonly crmService: CrmService,
-    private readonly whatsAppService: WhatsAppService,
-  ) {}
+  constructor(private readonly crmService: CrmService) {}
 
   // ============ LEADS ENDPOINTS ============
 
@@ -134,36 +130,5 @@ export class CrmController {
     @Body() leadMoves: { id: string; stageId: string | null }[],
   ) {
     return this.crmService.reorderLeads(workspaceId, leadMoves);
-  }
-
-  // ============ WHATSAPP MESSAGING ============
-  @Post('leads/:id/whatsapp')
-  @Auth()
-  async sendWhatsAppToLead(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { message: string; template?: string },
-  ) {
-    const lead = await this.crmService.findLeadById(id);
-    if (!lead.phone) {
-      return { success: false, error: 'Lead has no phone number' };
-    }
-
-    let message = body.message;
-
-    // Use template if provided
-    if (body.template) {
-      const templates: Record<string, string> = {
-        greeting: `مرحباً ${lead.name}! 👋\n\nنحن سعداء بالتواصل معك. كيف يمكننا مساعدتك؟`,
-        follow_up: `مرحباً ${lead.name}! 👋\n\nنتابع معك بخصوص استفسارك السابق. هل تحتاج مساعدة إضافية؟`,
-        payment_reminder: `مرحباً ${lead.name}! 👋\n\nنود تذكيرك بالدفعة المستحقة. يرجى التواصل معنا للمزيد من التفاصيل.`,
-      };
-      message = templates[body.template] || message;
-    }
-
-    const success = await this.whatsAppService.sendTextMessage(
-      lead.phone,
-      message,
-    );
-    return { success, leadId: id, sentTo: lead.phone };
   }
 }

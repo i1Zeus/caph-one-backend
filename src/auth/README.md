@@ -1,6 +1,6 @@
-# iZeus ERP - Authentication & Authorization System
+# DevHouse ERP - Authentication & Authorization System
 
-This directory contains a comprehensive role-based access control (RBAC) and permission-based access control system for the iZeus ERP application.
+This directory contains a comprehensive role-based access control (RBAC) and permission-based access control system for the DevHouse ERP application.
 
 ## 🏗️ Architecture Overview
 

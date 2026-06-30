@@ -9,7 +9,6 @@
 ## 📋 أنواع الإجراءات
 
 ### ActionType - نوع الإجراء
-
 ```typescript
 enum ActionType {
   VERBAL_WARNING      // إنذار شفهي
@@ -24,7 +23,6 @@ enum ActionType {
 ```
 
 ### Severity - مستوى الخطورة
-
 ```typescript
 enum Severity {
   LOW         // بسيط
@@ -35,7 +33,6 @@ enum Severity {
 ```
 
 ### ActionCategory - فئة الإجراء
-
 ```typescript
 enum ActionCategory {
   BEHAVIORAL      // سلوكي (سوء السلوك، عدم الاحترام)
@@ -50,7 +47,6 @@ enum ActionCategory {
 ```
 
 ### ActionStatus - حالة الإجراء
-
 ```typescript
 enum ActionStatus {
   ACTIVE      // نشط
@@ -65,32 +61,27 @@ enum ActionStatus {
 ## 🚀 الميزات الرئيسية
 
 ### ✅ 1. إدارة الإنذارات
-
 - إنذارات شفهية وكتابية ونهائية
 - تسجيل تاريخ ووقت الإجراء
 - إضافة أدلة (روابط للملفات)
 - أسماء الشهود
 
 ### ✅ 2. الجزاءات المالية
-
 - خصم من الراتب (المبلغ وعدد الأيام)
 - تتبع إجمالي الخصومات
 - ربط تلقائي بنظام الرواتب
 
 ### ✅ 3. الإيقاف عن العمل
-
 - تحديد عدد أيام الإيقاف
 - تتبع مدة الإيقاف
 - تأثير على الحضور
 
 ### ✅ 4. التصنيف والتتبع
-
 - 8 فئات مختلفة
 - 4 مستويات خطورة
 - 4 حالات للإجراء
 
 ### ✅ 5. التقارير والإحصائيات
-
 - إحصائيات شاملة
 - سجل كامل للموظف
 - الموظفون بإنذارات متعددة
@@ -101,7 +92,6 @@ enum ActionStatus {
 ## 📡 API Endpoints
 
 ### 1. إنشاء إجراء تأديبي
-
 ```http
 POST /hr/disciplinary-actions
 Content-Type: application/json
@@ -124,13 +114,11 @@ Body:
 ```
 
 ### 2. الحصول على جميع الإجراءات (مع تصفية)
-
 ```http
 GET /hr/disciplinary-actions?employeeId={id}&type={type}&severity={severity}&status={status}&page=1&limit=20
 ```
 
 **Query Parameters:**
-
 - `employeeId` (optional): معرف الموظف
 - `type` (optional): نوع الإجراء
 - `severity` (optional): مستوى الخطورة
@@ -145,19 +133,16 @@ GET /hr/disciplinary-actions?employeeId={id}&type={type}&severity={severity}&sta
 - `sortOrder` (optional): asc | desc
 
 ### 3. الحصول على إجراءات موظف محدد
-
 ```http
 GET /hr/disciplinary-actions/employee/{employeeId}
 ```
 
 ### 4. سجل الموظف الكامل (مع إحصائيات)
-
 ```http
 GET /hr/disciplinary-actions/employee/{employeeId}/history
 ```
 
 **Response:**
-
 ```json
 {
   "employee": {
@@ -185,13 +170,11 @@ GET /hr/disciplinary-actions/employee/{employeeId}/history
 ```
 
 ### 5. الحصول على إجراء واحد
-
 ```http
 GET /hr/disciplinary-actions/{id}
 ```
 
 ### 6. تحديث إجراء
-
 ```http
 PUT /hr/disciplinary-actions/{id}
 Content-Type: application/json
@@ -206,7 +189,6 @@ Body:
 ```
 
 ### 7. حل/إغلاق إجراء
-
 ```http
 PUT /hr/disciplinary-actions/{id}/resolve
 Content-Type: application/json
@@ -220,19 +202,16 @@ Body:
 ```
 
 ### 8. حذف إجراء
-
 ```http
 DELETE /hr/disciplinary-actions/{id}
 ```
 
 ### 9. الإحصائيات الشاملة
-
 ```http
 GET /hr/disciplinary-actions/stats
 ```
 
 **Response:**
-
 ```json
 {
   "totalActions": 45,
@@ -246,19 +225,16 @@ GET /hr/disciplinary-actions/stats
 ```
 
 ### 10. الإجراءات الحرجة
-
 ```http
 GET /hr/disciplinary-actions/critical
 ```
 
 ### 11. الموظفون بإنذارات متعددة
-
 ```http
 GET /hr/disciplinary-actions/multiple-warnings?minWarnings=3
 ```
 
 **Response:**
-
 ```json
 [
   {
@@ -280,14 +256,14 @@ GET /hr/disciplinary-actions/multiple-warnings?minWarnings=3
 
 ```typescript
 const action = await createDisciplinaryAction({
-  employeeId: 'emp-uuid',
-  type: 'VERBAL_WARNING',
-  severity: 'LOW',
-  category: 'ATTENDANCE',
-  title: 'تأخير عن العمل',
-  reason: 'وصول متأخر بـ 30 دقيقة',
-  actionDate: '2025-10-07',
-  penalty: 'تحذير شفهي مع التنبيه',
+  employeeId: "emp-uuid",
+  type: "VERBAL_WARNING",
+  severity: "LOW",
+  category: "ATTENDANCE",
+  title: "تأخير عن العمل",
+  reason: "وصول متأخر بـ 30 دقيقة",
+  actionDate: "2025-10-07",
+  penalty: "تحذير شفهي مع التنبيه"
 });
 ```
 
@@ -295,16 +271,16 @@ const action = await createDisciplinaryAction({
 
 ```typescript
 const action = await createDisciplinaryAction({
-  employeeId: 'emp-uuid',
-  type: 'SALARY_DEDUCTION',
-  severity: 'MEDIUM',
-  category: 'ATTENDANCE',
-  title: 'غياب بدون عذر',
-  reason: 'غياب 3 أيام بدون إذن',
-  actionDate: '2025-10-07',
-  deductionAmount: 150000, // 150,000 IQD
-  deductionDays: 3, // 3 أيام
-  penalty: 'خصم 3 أيام من الراتب',
+  employeeId: "emp-uuid",
+  type: "SALARY_DEDUCTION",
+  severity: "MEDIUM",
+  category: "ATTENDANCE",
+  title: "غياب بدون عذر",
+  reason: "غياب 3 أيام بدون إذن",
+  actionDate: "2025-10-07",
+  deductionAmount: 150000,    // 150,000 IQD
+  deductionDays: 3,            // 3 أيام
+  penalty: "خصم 3 أيام من الراتب"
 });
 ```
 
@@ -312,16 +288,16 @@ const action = await createDisciplinaryAction({
 
 ```typescript
 const action = await createDisciplinaryAction({
-  employeeId: 'emp-uuid',
-  type: 'SUSPENSION',
-  severity: 'HIGH',
-  category: 'MISCONDUCT',
-  title: 'سوء سلوك مع العملاء',
-  reason: 'تعامل غير لائق مع عميل',
-  actionDate: '2025-10-07',
+  employeeId: "emp-uuid",
+  type: "SUSPENSION",
+  severity: "HIGH",
+  category: "MISCONDUCT",
+  title: "سوء سلوك مع العملاء",
+  reason: "تعامل غير لائق مع عميل",
+  actionDate: "2025-10-07",
   suspensionDays: 5,
-  penalty: 'إيقاف عن العمل لمدة 5 أيام بدون راتب',
-  witnessNames: 'سارة علي، محمود حسن',
+  penalty: "إيقاف عن العمل لمدة 5 أيام بدون راتب",
+  witnessNames: "سارة علي، محمود حسن"
 });
 ```
 
@@ -329,15 +305,15 @@ const action = await createDisciplinaryAction({
 
 ```typescript
 const action = await createDisciplinaryAction({
-  employeeId: 'emp-uuid',
-  type: 'FINAL_WARNING',
-  severity: 'CRITICAL',
-  category: 'PERFORMANCE',
-  title: 'ضعف الأداء المستمر',
-  reason: 'عدم تحقيق الأهداف لمدة 6 أشهر',
-  description: 'على الرغم من التدريب والإنذارات السابقة...',
-  actionDate: '2025-10-07',
-  penalty: 'إنذار نهائي - التحسين خلال شهر أو الفصل',
+  employeeId: "emp-uuid",
+  type: "FINAL_WARNING",
+  severity: "CRITICAL",
+  category: "PERFORMANCE",
+  title: "ضعف الأداء المستمر",
+  reason: "عدم تحقيق الأهداف لمدة 6 أشهر",
+  description: "على الرغم من التدريب والإنذارات السابقة...",
+  actionDate: "2025-10-07",
+  penalty: "إنذار نهائي - التحسين خلال شهر أو الفصل"
 });
 ```
 
@@ -345,9 +321,9 @@ const action = await createDisciplinaryAction({
 
 ```typescript
 const resolved = await resolveAction(actionId, {
-  status: 'RESOLVED',
-  resolvedDate: '2025-10-15',
-  resolvedNotes: 'تحسن الأداء بشكل ملحوظ، تم إغلاق الإجراء',
+  status: "RESOLVED",
+  resolvedDate: "2025-10-15",
+  resolvedNotes: "تحسن الأداء بشكل ملحوظ، تم إغلاق الإجراء"
 });
 ```
 
@@ -370,10 +346,10 @@ else if (lateCount === 3) {
 
 // المرحلة 3: خصم من الراتب
 else if (lateCount === 5) {
-  createAction({
+  createAction({ 
     type: 'SALARY_DEDUCTION',
     severity: 'HIGH',
-    deductionDays: 1,
+    deductionDays: 1
   });
 }
 
@@ -388,12 +364,12 @@ else if (lateCount === 7) {
 ```typescript
 const thisMonth = {
   startDate: '2025-10-01',
-  endDate: '2025-10-31',
+  endDate: '2025-10-31'
 };
 
 const monthlyActions = await findAll({
   startDate: thisMonth.startDate,
-  endDate: thisMonth.endDate,
+  endDate: thisMonth.endDate
 });
 
 // تحليل البيانات
@@ -401,7 +377,7 @@ const summary = {
   total: monthlyActions.total,
   byCategory: groupBy(monthlyActions.actions, 'category'),
   bySeverity: groupBy(monthlyActions.actions, 'severity'),
-  mostViolated: findMostCommonReason(monthlyActions.actions),
+  mostViolated: findMostCommonReason(monthlyActions.actions)
 };
 ```
 
@@ -416,7 +392,7 @@ for (const emp of problematicEmployees) {
   await sendNotification({
     to: 'hr@company.com',
     subject: `تنبيه: موظف بـ ${emp.warningCount} إنذارات`,
-    body: `الموظف ${emp.firstName} لديه ${emp.warningCount} إنذار نشط`,
+    body: `الموظف ${emp.firstName} لديه ${emp.warningCount} إنذار نشط`
   });
 }
 ```
@@ -440,13 +416,11 @@ for (const action of criticalActions) {
 ## 🔒 الأمان والصلاحيات
 
 ### متطلبات الأمان:
-
 1. ✅ جميع الـ endpoints محمية بـ `@Auth()` decorator
 2. ✅ يجب تسجيل الدخول للوصول
 3. ✅ تتبع من أصدر الإجراء (`issuedById`)
 
 ### الصلاحيات المقترحة (للتطبيق المستقبلي):
-
 ```typescript
 - hr:disciplinary-actions:read    // قراءة الإجراءات
 - hr:disciplinary-actions:create  // إنشاء إجراءات
@@ -460,44 +434,43 @@ for (const action of criticalActions) {
 ## 🗄️ قاعدة البيانات
 
 ### Schema:
-
 ```prisma
 model DisciplinaryAction {
   id          String     @id @default(uuid())
   employeeId  String
   employee    Employee   @relation(fields: [employeeId], references: [id])
-
+  
   type        ActionType
   severity    Severity
   category    ActionCategory @default(BEHAVIORAL)
-
+  
   title       String
   reason      String
   description String?
   actionDate  DateTime
-
+  
   // الجزاءات
   penalty         String?
   deductionAmount Decimal?
   deductionDays   Int?
   suspensionDays  Int?
-
+  
   // معلومات إضافية
   evidenceUrl     String?
   witnessNames    String?
-
+  
   // الحالة
   status          ActionStatus @default(ACTIVE)
   resolvedDate    DateTime?
   resolvedNotes   String?
-
+  
   issuedById  String
   issuedBy    User
-
+  
   isDeleted   Boolean    @default(false)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-
+  
   @@index([employeeId])
   @@index([type])
   @@index([severity])
@@ -506,7 +479,6 @@ model DisciplinaryAction {
 ```
 
 ### Indexes للأداء:
-
 ```prisma
 @@index([employeeId])    // البحث بالموظف
 @@index([type])          // البحث بالنوع
@@ -520,7 +492,6 @@ model DisciplinaryAction {
 ## 📊 التقارير المتاحة
 
 ### 1. إحصائيات عامة
-
 ```typescript
 GET /hr/disciplinary-actions/stats
 
@@ -550,7 +521,6 @@ Response:
 ```
 
 ### 2. سجل موظف محدد
-
 ```typescript
 GET /hr/disciplinary-actions/employee/{employeeId}/history
 
@@ -571,7 +541,6 @@ Response:
 ```
 
 ### 3. الموظفون المشكلين
-
 ```typescript
 GET /hr/disciplinary-actions/multiple-warnings?minWarnings=3
 
@@ -589,7 +558,6 @@ Response:
 ```
 
 ### 4. الإجراءات الحرجة
-
 ```typescript
 GET /hr/disciplinary-actions/critical
 
@@ -612,7 +580,6 @@ Response:
 ### السيناريو 1: موظف متأخر بشكل متكرر
 
 **الخطوات:**
-
 1. **الأسبوع 1**: إنذار شفهي (VERBAL_WARNING)
 2. **الأسبوع 2**: لا يزال يتأخر → إنذار كتابي (WRITTEN_WARNING)
 3. **الأسبوع 3**: لا يزال يتأخر → خصم من الراتب (SALARY_DEDUCTION)
@@ -622,10 +589,9 @@ Response:
 ### السيناريو 2: ضعف الأداء
 
 **الخطوات:**
-
 1. **الشهر 1**: ملاحظة توثيقية (NOTE) - تسجيل ضعف الأداء
 2. **الشهر 2**: إنذار كتابي (WRITTEN_WARNING) مع خطة تحسين
-3. **الشهر 3**:
+3. **الشهر 3**: 
    - إذا تحسن → حل الإجراء (RESOLVED)
    - إذا لم يتحسن → إنذار نهائي (FINAL_WARNING)
 4. **الشهر 4**:
@@ -635,7 +601,6 @@ Response:
 ### السيناريو 3: حادث سلامة خطير
 
 **الخطوة المباشرة:**
-
 ```typescript
 createAction({
   type: 'SUSPENSION',
@@ -644,7 +609,7 @@ createAction({
   title: 'انتهاك قواعد السلامة',
   reason: 'عدم ارتداء معدات السلامة رغم التحذيرات',
   suspensionDays: 7,
-  penalty: 'إيقاف 7 أيام بدون راتب',
+  penalty: 'إيقاف 7 أيام بدون راتب'
 });
 ```
 
@@ -661,7 +626,7 @@ const deductionActions = await findAll({
   type: 'SALARY_DEDUCTION',
   status: 'ACTIVE',
   startDate: monthStart,
-  endDate: monthEnd,
+  endDate: monthEnd
 });
 
 let totalDeduction = 0;
@@ -670,7 +635,7 @@ for (const action of deductionActions.actions) {
     totalDeduction += Number(action.deductionAmount);
   }
   if (action.deductionDays) {
-    totalDeduction += dailySalary * action.deductionDays;
+    totalDeduction += (dailySalary * action.deductionDays);
   }
 }
 
@@ -687,7 +652,7 @@ if (action.type === 'SUSPENSION' && action.suspensionDays) {
       employeeId: action.employeeId,
       date: addDays(action.actionDate, i),
       status: 'ABSENT',
-      notes: `إيقاف - إجراء تأديبي #${action.id}`,
+      notes: `إيقاف - إجراء تأديبي #${action.id}`
     });
   }
 }
@@ -701,7 +666,7 @@ await notificationService.send({
   to: action.employee.userId,
   title: 'إجراء تأديبي جديد',
   body: `تم إصدار ${getActionTypeLabel(action.type)} بتاريخ ${action.actionDate}`,
-  link: `/hr/employees/view/${action.employeeId}/disciplinary`,
+  link: `/hr/employees/view/${action.employeeId}/disciplinary`
 });
 
 // إشعار للمدير
@@ -709,7 +674,7 @@ await notificationService.send({
   to: action.employee.managerId,
   title: 'تنبيه: إجراء تأديبي',
   body: `تم إصدار إجراء تأديبي للموظف ${action.employee.firstName}`,
-  link: `/hr/disciplinary-actions/${action.id}`,
+  link: `/hr/disciplinary-actions/${action.id}`
 });
 ```
 
@@ -718,17 +683,13 @@ await notificationService.send({
 ## 🐛 استكشاف الأخطاء
 
 ### خطأ: "Employee not found"
-
 **الحل:** تأكد من صحة `employeeId` وأن الموظف غير محذوف
 
 ### خطأ: "Action is already resolved or cancelled"
-
 **الحل:** لا يمكن حل إجراء محلول أو ملغي مسبقاً
 
 ### خطأ: "Failed to create disciplinary action"
-
 **الحل:** تحقق من:
-
 1. جميع الحقول المطلوبة موجودة
 2. التواريخ بصيغة صحيحة (ISO 8601)
 3. الـ enums صحيحة
@@ -738,7 +699,6 @@ await notificationService.send({
 ## 📈 أفضل الممارسات
 
 ### 1. التوثيق الدقيق
-
 ```typescript
 ✅ سجل كل التفاصيل في الوصف
 ✅ أضف أسماء الشهود
@@ -747,7 +707,6 @@ await notificationService.send({
 ```
 
 ### 2. التصعيد التدريجي
-
 ```typescript
 ✅ ابدأ بإنذار شفهي
 ✅ ثم كتابي
@@ -756,7 +715,6 @@ await notificationService.send({
 ```
 
 ### 3. الموضوعية
-
 ```typescript
 ✅ استخدم لغة مهنية
 ✅ سجل الحقائق فقط
@@ -765,7 +723,6 @@ await notificationService.send({
 ```
 
 ### 4. المتابعة
-
 ```typescript
 ✅ راجع الإجراءات بشكل دوري
 ✅ حل الإجراءات عند التحسن
@@ -778,11 +735,11 @@ await notificationService.send({
 ## 📞 الدعم
 
 للمساعدة أو الاستفسارات، يرجى مراجعة:
-
 - التوثيق الكامل في هذا الملف
 - الكود المصدري
 - فريق التطوير
 
 ---
 
-**تم التطوير بـ ❤️ لنظام iZeus ERP**
+**تم التطوير بـ ❤️ لنظام DevHouse ERP**
+

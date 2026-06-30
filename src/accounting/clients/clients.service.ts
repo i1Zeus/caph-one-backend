@@ -15,12 +15,8 @@ export class ClientsService {
 
   async create(createClientDto: CreateClientDto) {
     try {
-      const { dateOfBirth, ...restData } = createClientDto;
       const client = await this.prisma.client.create({
-        data: {
-          ...restData,
-          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
-        },
+        data: createClientDto,
       });
       this.logger.log(`Created client: ${client.name}`);
       return client;

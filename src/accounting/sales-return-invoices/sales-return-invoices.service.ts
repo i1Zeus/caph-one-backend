@@ -128,7 +128,7 @@ export class SalesReturnInvoicesService {
         invoiceNumber: invoice.invoiceNumber,
         invoiceDate: invoice.invoiceDate,
         totalAmount: invoice.totalAmount,
-        netAmount: invoice.totalAmount,
+        netAmount: invoice.totalAmount, // Use totalAmount as netAmount in devhouse structure
       },
       items: returnableItems,
     };

@@ -1,4 +1,4 @@
-# iZeus ERP - Dynamic Role-Permission System
+# DevHouse ERP - Dynamic Role-Permission System
 
 This is a completely flexible, database-driven role and permission system where:
 
@@ -23,7 +23,7 @@ User ←→ UserRole ←→ Role ←→ RolePermission ←→ Permission
 ### 1. Database Migration
 
 ```bash
-cd iZeus-erp-backend
+cd devhouse-erp-backend
 npx prisma migrate dev --name add-dynamic-roles-system
 npx prisma generate
 ```

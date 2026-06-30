@@ -33,7 +33,7 @@ export class InventoryService {
         transactions: { status: 'Active', endpoint: '/warehouse-transactions' },
       },
       documentation: '/docs',
-      contact: 'husseinnajah.it@gmail.com',
+      contact: 'support@devhouse.iq',
     };
   }
 

@@ -1,18 +1,22 @@
 import {
-  BadRequestException,
   Injectable,
-  Logger,
+  BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
-import { InvoiceStatus, WarehouseTransactionType } from '@prisma/client';
-import { UnitsService } from '../../inventory/units/units.service';
-import { WarehouseTransactionsService } from '../../inventory/warehouse-transactions/warehouse-transactions.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { InvoiceConfigsService } from '../invoice-configs/invoice-configs.service';
 import {
   CreatePurchaseReturnInvoiceDto,
   UpdatePurchaseReturnInvoiceDto,
 } from './dto';
+import { InvoiceStatus, WarehouseTransactionType } from '@prisma/client';
+import { InvoiceConfigsService } from '../invoice-configs/invoice-configs.service';
+import {
+  InvoiceType,
+  PaymentType as ConfigPaymentType,
+} from '../invoice-configs/dto';
+import { UnitsService } from '../../inventory/units/units.service';
+import { WarehouseTransactionsService } from '../../inventory/warehouse-transactions/warehouse-transactions.service';
 
 @Injectable()
 export class PurchaseReturnInvoicesService {
@@ -134,7 +138,7 @@ export class PurchaseReturnInvoicesService {
         invoiceNumber: invoice.invoiceNumber,
         invoiceDate: invoice.invoiceDate,
         totalAmount: invoice.totalAmount,
-        netAmount: invoice.totalAmount,
+        netAmount: invoice.totalAmount, // Use totalAmount as netAmount in devhouse structure
       },
       items: returnableItems,
     };

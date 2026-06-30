@@ -1,15 +1,15 @@
-import { AccountType } from '@prisma/client';
-import { Type } from 'class-transformer';
 import {
   IsArray,
-  IsBoolean,
-  IsEnum,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
+  IsEnum,
+  IsBoolean,
   ValidateNested,
+  IsNumber,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { AccountType } from '@prisma/client';
 
 export class AccountImportItem {
   @IsString()

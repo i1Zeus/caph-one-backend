@@ -30,7 +30,7 @@ WHATSAPP_API_TOKEN=your-whatsapp-api-token
 When creating a new user, you can now:
 
 - ✅ **Send Email Invitation** - Beautiful HTML email with login credentials
-- ✅ **Send WhatsApp Invitation** - Formatted message with login details
+- ✅ **Send WhatsApp Invitation** - Formatted message with login details  
 - ✅ **Custom Login URL** - Override default login URL
 - ✅ **Graceful Failure** - User creation succeeds even if notifications fail
 
@@ -40,7 +40,7 @@ When creating a new user, you can now:
 - Login credentials clearly displayed
 - Direct login button/link
 - Security reminder to change password
-- Company branding (iZeus ERP)
+- Company branding (DevHouse ERP)
 
 ### 📱 **WhatsApp Invitation Features**
 
@@ -59,9 +59,9 @@ The create user form now includes:
 ```typescript
 interface CreateUserDto {
   // ... existing fields
-  sendEmailInvitation?: boolean; // Default: true
-  sendWhatsAppInvitation?: boolean; // Default: true
-  customLoginUrl?: string; // Optional custom URL
+  sendEmailInvitation?: boolean      // Default: true
+  sendWhatsAppInvitation?: boolean   // Default: true  
+  customLoginUrl?: string           // Optional custom URL
 }
 ```
 
@@ -71,7 +71,7 @@ interface CreateUserDto {
 POST /users
 {
   "name": "John Doe",
-  "email": "john@example.com",
+  "email": "john@example.com", 
   "phone": "+1234567890",
   "password": "temporary123",
   "role": "EMPLOYEE",
@@ -93,16 +93,15 @@ await this.notificationsService.sendUserInvitationNotification(
     email: true,
     whatsapp: true,
     emailAddress: 'user@example.com',
-    phoneNumber: '+1234567890',
+    phoneNumber: '+1234567890'
   },
-  'https://custom-login-url.com',
+  'https://custom-login-url.com'
 );
 ```
 
 ## Email Template Preview
 
 The email includes:
-
 - 🏢 Company header with logo
 - 👋 Personal greeting
 - 📋 Login credentials in highlighted box
@@ -113,25 +112,25 @@ The email includes:
 ## WhatsApp Message Preview
 
 ```
-🎉 Welcome to iZeus ERP!
+🎉 Welcome to DevHouse ERP!
 
 Hi John Doe,
 
-You've been invited to join our project management team!
+You've been invited to join our project management team! 
 
 📋 Your Login Credentials:
 ✉️ Email: john@example.com
 🔑 Password: `temporary123`
 
 🔗 Login Here:
-https://app.iZeus.com/auth/login
+https://app.devhouse.com/auth/login
 
 ⚠️ Important: Please change your password after your first login.
 
 Need help? Just reply to this message!
 
 Best regards,
-iZeus Team 🏢
+DevHouse Team 🏢
 ```
 
 ## Error Handling
@@ -144,7 +143,6 @@ iZeus Team 🏢
 ## Testing
 
 1. **Test Email Setup:**
-
    ```bash
    # Make sure your SMTP settings work
    curl -X POST http://localhost:3000/notifications/test-email \
@@ -153,9 +151,8 @@ iZeus Team 🏢
    ```
 
 2. **Test WhatsApp Setup:**
-
    ```bash
-   # Make sure your WhatsApp API works
+   # Make sure your WhatsApp API works  
    curl -X POST http://localhost:3000/notifications/test-whatsapp \
      -H "Content-Type: application/json" \
      -d '{"to": "+1234567890"}'
@@ -170,21 +167,18 @@ iZeus Team 🏢
 ## Troubleshooting
 
 ### Email Not Sending
-
 - Check SMTP credentials in `.env`
 - Verify email provider allows SMTP
 - Check firewall/port restrictions
 - Test with a simple email service first
 
-### WhatsApp Not Sending
-
+### WhatsApp Not Sending  
 - Verify WhatsApp API credentials
 - Check phone number format (+country code)
 - Ensure WhatsApp API service is active
 - Test API endpoint manually
 
 ### Login URL Issues
-
 - Verify `FRONTEND_URL` in `.env`
 - Check that custom URLs are accessible
 - Ensure HTTPS for production environments
@@ -194,4 +188,4 @@ iZeus Team 🏢
 - 🔒 Temporary passwords are sent once and should be changed immediately
 - 🔒 Notification failures don't expose sensitive data
 - 🔒 Login URLs should use HTTPS in production
-- 🔒 Monitor invitation logs for suspicious activity
+- 🔒 Monitor invitation logs for suspicious activity 

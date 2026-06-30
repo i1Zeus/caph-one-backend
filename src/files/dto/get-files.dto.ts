@@ -11,23 +11,8 @@ import {
 export class GetFilesByEntityDto {
   @IsString()
   @IsNotEmpty()
-  @IsEnum([
-    'project',
-    'task',
-    'comment',
-    'workspace',
-    'contract',
-    'property',
-    'lead',
-  ])
-  entityType:
-    | 'project'
-    | 'task'
-    | 'comment'
-    | 'workspace'
-    | 'contract'
-    | 'property'
-    | 'lead';
+  @IsEnum(['project', 'task', 'comment'])
+  entityType: 'project' | 'task' | 'comment';
 
   @IsString()
   @IsNotEmpty()
@@ -37,23 +22,8 @@ export class GetFilesByEntityDto {
 export class GetFileStatsDto {
   @IsOptional()
   @IsString()
-  @IsEnum([
-    'project',
-    'task',
-    'comment',
-    'workspace',
-    'contract',
-    'property',
-    'lead',
-  ])
-  entityType?:
-    | 'project'
-    | 'task'
-    | 'comment'
-    | 'workspace'
-    | 'contract'
-    | 'property'
-    | 'lead';
+  @IsEnum(['project', 'task', 'comment'])
+  entityType?: 'project' | 'task' | 'comment';
 
   @IsOptional()
   @IsString()
@@ -84,23 +54,8 @@ export class GetAllFilesDto {
   search?: string;
 
   @IsOptional()
-  @IsEnum([
-    'project',
-    'task',
-    'comment',
-    'workspace',
-    'contract',
-    'property',
-    'lead',
-  ])
-  entityType?:
-    | 'project'
-    | 'task'
-    | 'comment'
-    | 'workspace'
-    | 'contract'
-    | 'property'
-    | 'lead';
+  @IsEnum(['project', 'task', 'comment'])
+  entityType?: 'project' | 'task' | 'comment';
 
   @IsOptional()
   @IsString()

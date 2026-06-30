@@ -4,7 +4,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { WhatsAppService } from '../notifications/whatsapp/whatsapp.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateLeadDto,
@@ -16,22 +15,12 @@ import { Lead, LeadStage } from './entities';
 
 @Injectable()
 export class CrmService {
-  constructor(
-    private prisma: PrismaService,
-    private whatsAppService: WhatsAppService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   // ============ LEADS ============
 
   async createLead(createLeadDto: CreateLeadDto): Promise<Lead> {
-    const {
-      workspaceId,
-      stageId,
-      salesManId,
-      dateOfBirth,
-      sendWelcomeMessage,
-      ...leadData
-    } = createLeadDto;
+    const { workspaceId, stageId, salesManId, ...leadData } = createLeadDto;
 
     // Ensure workspaceId is provided
     if (!workspaceId) {
@@ -80,13 +69,12 @@ export class CrmService {
       }
     }
 
-    const lead = await this.prisma.lead.create({
+    return this.prisma.lead.create({
       data: {
         ...leadData,
         workspaceId,
         stageId: validatedStageId,
         salesManId,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
       },
       include: {
         stage: true,
@@ -99,32 +87,6 @@ export class CrmService {
         },
       },
     });
-
-    // Send welcome WhatsApp message if phone is provided and sendWelcomeMessage is not explicitly disabled
-    if (lead.phone && sendWelcomeMessage !== false) {
-      this.sendWelcomeMessageAsync(lead.phone, lead.name, lead.companyName);
-    }
-
-    return lead;
-  }
-
-  private async sendWelcomeMessageAsync(
-    phone: string,
-    name: string,
-    companyName?: string,
-  ) {
-    try {
-      await this.whatsAppService.sendLeadWelcomeMessage(
-        phone,
-        name,
-        companyName,
-      );
-    } catch (error) {
-      console.error(
-        'Failed to send WhatsApp welcome message asynchronously to lead:',
-        error,
-      );
-    }
   }
 
   async findAllLeads(workspaceId?: string, stageId?: string): Promise<Lead[]> {
@@ -196,8 +158,7 @@ export class CrmService {
   async updateLead(id: string, updateLeadDto: UpdateLeadDto): Promise<Lead> {
     const existingLead = await this.findLeadById(id);
 
-    const { stageId, workspaceId, salesManId, dateOfBirth, ...updateData } =
-      updateLeadDto;
+    const { stageId, workspaceId, salesManId, ...updateData } = updateLeadDto;
 
     // Verify stage exists if provided, otherwise set to null (unstaged)
     let validatedStageId = stageId;
@@ -247,9 +208,6 @@ export class CrmService {
         ...updateData,
         ...(validatedStageId !== undefined && { stageId: validatedStageId }),
         salesManId,
-        ...(dateOfBirth !== undefined && {
-          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-        }),
       },
       include: {
         stage: true,

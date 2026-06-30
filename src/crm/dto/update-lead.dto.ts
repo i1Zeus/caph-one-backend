@@ -34,10 +34,6 @@ export class UpdateLeadDto {
 
   @IsString()
   @IsOptional()
-  dateOfBirth?: string;
-
-  @IsString()
-  @IsOptional()
   description?: string;
 
   @IsString()

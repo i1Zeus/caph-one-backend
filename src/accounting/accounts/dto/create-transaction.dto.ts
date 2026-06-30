@@ -1,13 +1,13 @@
-import { Type } from 'class-transformer';
 import {
-  ArrayMinSize,
-  IsArray,
-  IsDateString,
-  IsNumber,
-  IsOptional,
   IsString,
+  IsOptional,
+  IsNumber,
+  IsDateString,
   ValidateNested,
+  IsArray,
+  ArrayMinSize,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class TransactionLineDto {
   @IsString()

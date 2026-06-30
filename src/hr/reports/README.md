@@ -9,13 +9,11 @@
 ## 📋 التقارير المتاحة (5 تقارير)
 
 ### 1. تقرير الحضور الشامل
-
 ```
 GET /hr/reports/attendance?startDate=2025-10-01&endDate=2025-10-31
 ```
 
 **يشمل:**
-
 - سجلات الحضور التفصيلية لكل موظف
 - إجمالي أيام الحضور والغياب
 - التأخير (بالدقائق والساعات)
@@ -24,13 +22,11 @@ GET /hr/reports/attendance?startDate=2025-10-01&endDate=2025-10-31
 - معدل الحضور
 
 ### 2. تقرير التأخير
-
 ```
 GET /hr/reports/late-arrivals?startDate=2025-10-01&endDate=2025-10-31
 ```
 
 **يشمل:**
-
 - الموظفون الذين تأخروا فقط
 - عدد مرات التأخير
 - إجمالي دقائق التأخير
@@ -38,39 +34,33 @@ GET /hr/reports/late-arrivals?startDate=2025-10-01&endDate=2025-10-31
 - تفاصيل كل حالة تأخير
 
 ### 3. تقرير الغياب
-
 ```
 GET /hr/reports/absence?startDate=2025-10-01&endDate=2025-10-31
 ```
 
 **يشمل:**
-
 - الموظفون الذين غابوا
 - عدد أيام الغياب
 - معدل الغياب
 - معدل الحضور
 
 ### 4. تقرير العمل الإضافي
-
 ```
 GET /hr/reports/overtime?startDate=2025-10-01&endDate=2025-10-31
 ```
 
 **يشمل:**
-
 - الموظفون الذين عملوا ساعات إضافية
 - إجمالي ساعات العمل الإضافي
 - متوسط العمل الإضافي
 - تفاصيل كل يوم
 
 ### 5. التقرير الملخص
-
 ```
 GET /hr/reports/summary?startDate=2025-10-01&endDate=2025-10-31
 ```
 
 **يشمل:**
-
 - إحصائيات عامة لجميع الموظفين
 - معدلات الحضور والغياب
 - إجمالي التأخير
@@ -93,7 +83,6 @@ jobId?: string      // وظيفة محددة (optional)
 ## 📊 هيكل البيانات
 
 ### Attendance Report Response
-
 ```typescript
 {
   employee: {
@@ -123,19 +112,16 @@ jobId?: string      // وظيفة محددة (optional)
 ## 💡 أمثلة الاستخدام
 
 ### 1. تقرير الحضور الشهري
-
 ```bash
 GET /hr/reports/attendance?startDate=2025-10-01&endDate=2025-10-31
 ```
 
 ### 2. تقرير التأخير لموظف محدد
-
 ```bash
 GET /hr/reports/late-arrivals?startDate=2025-10-01&endDate=2025-10-31&employeeId=emp-001
 ```
 
 ### 3. تقرير الغياب لوظيفة محددة
-
 ```bash
 GET /hr/reports/absence?startDate=2025-10-01&endDate=2025-10-31&jobId=job-developer
 ```
@@ -145,7 +131,6 @@ GET /hr/reports/absence?startDate=2025-10-01&endDate=2025-10-31&jobId=job-develo
 ## 🎨 الحسابات الدقيقة
 
 ### التأخير
-
 ```typescript
 إذا كان وقت الدخول المُجدول: 09:00
 والموظف دخل الساعة: 09:20
@@ -153,7 +138,6 @@ GET /hr/reports/absence?startDate=2025-10-01&endDate=2025-10-31&jobId=job-develo
 ```
 
 ### العمل الإضافي
-
 ```typescript
 إذا كان وقت الخروج المُجدول: 17:00
 والموظف خرج الساعة: 19:00
@@ -161,7 +145,6 @@ GET /hr/reports/absence?startDate=2025-10-01&endDate=2025-10-31&jobId=job-develo
 ```
 
 ### ساعات العمل
-
 ```typescript
 وقت الدخول: 09:20
 وقت الخروج: 17:30
@@ -169,7 +152,6 @@ GET /hr/reports/absence?startDate=2025-10-01&endDate=2025-10-31&jobId=job-develo
 ```
 
 ### معدل الحضور
-
 ```typescript
 أيام الحضور: 22 يوم
 إجمالي الأيام: 30 يوم
@@ -181,7 +163,6 @@ GET /hr/reports/absence?startDate=2025-10-01&endDate=2025-10-31&jobId=job-develo
 ## 📄 للطباعة (قريباً في Frontend)
 
 التقارير مُصممة لتكون:
-
 - ✅ متوافقة مع ورق A4
 - ✅ أبعاد دقيقة (210mm x 297mm)
 - ✅ هوامش مناسبة
@@ -190,4 +171,5 @@ GET /hr/reports/absence?startDate=2025-10-01&endDate=2025-10-31&jobId=job-develo
 
 ---
 
-**تم التطوير بـ ❤️ لـ iZeus ERP System**
+**تم التطوير بـ ❤️ لـ DevHouse ERP System**
+

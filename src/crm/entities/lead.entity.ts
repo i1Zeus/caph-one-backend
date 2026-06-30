@@ -6,7 +6,6 @@ export class Lead implements PrismaLead {
   order: number | null;
   email: string | null;
   phone: string | null;
-  dateOfBirth: Date | null;
   description: string | null;
   companyName: string | null;
   industry: string | null;

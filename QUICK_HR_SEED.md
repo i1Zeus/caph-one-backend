@@ -7,14 +7,14 @@
 ## 🚀 تشغيل سريع (أمر واحد!)
 
 ```bash
-cd izeus-erp-backend
+cd devhouse-erp-backend
 npm run seed:hr
 ```
 
 **أو:**
 
 ```bash
-cd izeus-erp-backend
+cd devhouse-erp-backend
 npx ts-node prisma/seed-hr.ts
 ```
 
@@ -45,7 +45,6 @@ npm run seed:hr
 ```
 
 **السبب:**
-
 - HR Seed يحتاج workspace و super admin user
 
 ---
@@ -53,7 +52,6 @@ npm run seed:hr
 ## 📊 البيانات التجريبية
 
 ### الموظفون (10)
-
 ```
 👤 أحمد محمد       - CEO - 2,000,000 IQD
 👤 سارة علي        - HR Manager - 1,500,000 IQD
@@ -68,7 +66,6 @@ npm run seed:hr
 ```
 
 ### الوظائف (7)
-
 ```
 💼 المدير التنفيذي
 💼 مدير الموارد البشرية
@@ -80,7 +77,6 @@ npm run seed:hr
 ```
 
 ### التسلسل الإداري
-
 ```
 أحمد محمد (CEO)
 ├── سارة علي (HR Manager)
@@ -102,7 +98,6 @@ Encryption Key: demo-encryption-key-2025
 ```
 
 **استخدمه في:**
-
 - عرض الرواتب
 - توليد كشوف الرواتب
 - أي عملية تتعلق بالرواتب
@@ -114,35 +109,27 @@ Encryption Key: demo-encryption-key-2025
 ### بعد التشغيل، تحقق في UI:
 
 1. **الموظفون**
-
    ```
    http://localhost:3000/hr/employees
    ```
-
    **المتوقع:** 10 موظفين
 
 2. **الوظائف**
-
    ```
    http://localhost:3000/hr/jobs
    ```
-
    **المتوقع:** 7 وظائف
 
 3. **الحضور**
-
    ```
    http://localhost:3000/hr/attendance
    ```
-
    **المتوقع:** ~200+ سجل
 
 4. **الإجازات**
-
    ```
    http://localhost:3000/hr/leaves
    ```
-
    **المتوقع:** 6 طلبات
 
 5. **الرواتب**
@@ -181,7 +168,7 @@ npm run seed:hr
 
 ```bash
 # الأمر الكامل:
-cd izeus-erp-backend
+cd devhouse-erp-backend
 npx prisma db seed          # Main seed
 npm run seed:hr             # HR seed
 npm run start:dev           # تشغيل Backend
@@ -200,3 +187,4 @@ npm run start:dev           # تشغيل Backend
 ---
 
 **Happy Seeding! 🌱✨**
+
