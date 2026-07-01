@@ -4,9 +4,9 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ModuleRef } from '@nestjs/core';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UsersService } from 'src/users/users.service';
 import { DynamicPermissionsService } from './services/dynamic-permissions.service';
@@ -14,15 +14,16 @@ import { DynamicPermissionsService } from './services/dynamic-permissions.servic
 @Injectable()
 export class AuthService {
   constructor(
-    private usersService: UsersService,
+    private moduleRef: ModuleRef,
     private jwtService: JwtService,
     private permissionsService: DynamicPermissionsService,
     private prisma: PrismaService,
-    private tenantPrisma: TenantPrismaService,
   ) {}
 
   async validateUser(username: string, pass: string): Promise<any> {
-    const user = await this.usersService.findByEmail(username);
+    const user = await this.prisma.user.findUnique({
+      where: { email: username.toLowerCase().trim() },
+    });
     console.log('user', user);
     if (user && (await bcrypt.compare(pass, user.password))) {
       console.log('user', user);
@@ -41,7 +42,7 @@ export class AuthService {
           'You are not assigned to any organization.',
         );
       }
-      const org = await this.tenantPrisma.client.organization.findUnique({
+      const org = await this.prisma.organization.findUnique({
         where: { id: user.organizationId },
       });
       if (!org || org.isDeleted || !org.isActive) {
@@ -94,11 +95,10 @@ export class AuthService {
     }
 
     // Validate invitation token
-    const invitation =
-      await this.tenantPrisma.client.invitationToken.findUnique({
-        where: { token: createUserDto.invitationToken },
-        include: { organization: true },
-      });
+    const invitation = await this.prisma.invitationToken.findUnique({
+      where: { token: createUserDto.invitationToken },
+      include: { organization: true },
+    });
 
     if (!invitation) {
       throw new BadRequestException('Invalid invitation token.');
@@ -125,13 +125,15 @@ export class AuthService {
     }
 
     // Create user scoped to the organization and assign roles
-    const user = await this.usersService.create({
+    // Dynamically resolve request-scoped UsersService to prevent scope bubble propagation
+    const usersService = await this.moduleRef.resolve(UsersService);
+    const user = await usersService.create({
       ...createUserDto,
       roleIds: invitation.roleIds,
     });
 
     // Scopes user to organization
-    await this.tenantPrisma.client.user.update({
+    await this.prisma.user.update({
       where: { id: user.id },
       data: {
         organizationId: invitation.organizationId,
@@ -139,7 +141,7 @@ export class AuthService {
     });
 
     // Mark invitation as used
-    await this.tenantPrisma.client.invitationToken.update({
+    await this.prisma.invitationToken.update({
       where: { id: invitation.id },
       data: {
         isUsed: true,

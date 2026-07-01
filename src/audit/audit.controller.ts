@@ -5,6 +5,7 @@ import {
   Param,
   ParseIntPipe,
   Query,
+  Req,
 } from '@nestjs/common';
 import { Auth } from '../auth/decorators/universal-auth.decorator';
 import { AuditService } from './audit.service';
@@ -20,9 +21,15 @@ export class AuditController {
    */
   @Get('history')
   async getRecentHistory(
+    @Req() req: any,
     @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
   ) {
-    return this.auditService.getRecentHistory(limit);
+    const user = req.user;
+    return this.auditService.getRecentHistory(
+      limit,
+      user.tenantId,
+      user.isSuperAdmin,
+    );
   }
 
   /**
@@ -31,11 +38,19 @@ export class AuditController {
    */
   @Get('entity/:entityType/:entityId')
   async getEntityHistory(
+    @Req() req: any,
     @Param('entityType') entityType: string,
     @Param('entityId') entityId: string,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
   ) {
-    return this.auditService.getEntityHistory(entityType, entityId, limit);
+    const user = req.user;
+    return this.auditService.getEntityHistory(
+      entityType,
+      entityId,
+      limit,
+      user.tenantId,
+      user.isSuperAdmin,
+    );
   }
 
   /**
@@ -44,9 +59,15 @@ export class AuditController {
    */
   @Get('statistics')
   async getAuditStatistics(
+    @Req() req: any,
     @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number,
   ) {
-    return this.auditService.getAuditStatistics(days);
+    const user = req.user;
+    return this.auditService.getAuditStatistics(
+      days,
+      user.tenantId,
+      user.isSuperAdmin,
+    );
   }
 
   /**
@@ -55,10 +76,17 @@ export class AuditController {
    */
   @Get('actions/:actionType')
   async getActionHistory(
+    @Req() req: any,
     @Param('actionType') actionType: string,
     @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
   ) {
-    return this.auditService.getActionHistory(actionType, limit);
+    const user = req.user;
+    return this.auditService.getActionHistory(
+      actionType,
+      limit,
+      user.tenantId,
+      user.isSuperAdmin,
+    );
   }
 
   /**
@@ -67,9 +95,16 @@ export class AuditController {
    */
   @Get('entities/:entityType')
   async getEntityTypeHistory(
+    @Req() req: any,
     @Param('entityType') entityType: string,
     @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
   ) {
-    return this.auditService.getEntityTypeHistory(entityType, limit);
+    const user = req.user;
+    return this.auditService.getEntityTypeHistory(
+      entityType,
+      limit,
+      user.tenantId,
+      user.isSuperAdmin,
+    );
   }
 }

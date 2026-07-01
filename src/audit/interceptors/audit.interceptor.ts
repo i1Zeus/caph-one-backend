@@ -157,7 +157,10 @@ export class AuditInterceptor implements NestInterceptor {
       responseData,
       startTime,
     );
-    const metadata = this.buildMetadata(request, responseData, entityType);
+    const metadata = {
+      ...this.buildMetadata(request, responseData, entityType),
+      organizationId: request.user?.tenantId,
+    };
 
     if (!entityId) {
       console.warn(
@@ -245,6 +248,7 @@ export class AuditInterceptor implements NestInterceptor {
       'unknown',
       details,
       performedBy,
+      { organizationId: request.user?.tenantId },
     );
   }
 

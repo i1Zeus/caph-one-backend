@@ -57,8 +57,6 @@ export class PrismaService
       return this;
     }
 
-    const self = this;
-
     const modelsWithOrg = new Set([
       'Workspace',
       'User',
@@ -93,7 +91,7 @@ export class PrismaService
     return this.$extends({
       query: {
         $allModels: {
-          async findMany({ model, args, query }) {
+          findMany: async ({ model, args, query }) => {
             if (modelsWithOrg.has(model)) {
               (args as any).where = {
                 ...(args as any).where,
@@ -102,7 +100,7 @@ export class PrismaService
             }
             return query(args);
           },
-          async findFirst({ model, args, query }) {
+          findFirst: async ({ model, args, query }) => {
             if (modelsWithOrg.has(model)) {
               (args as any).where = {
                 ...(args as any).where,
@@ -111,7 +109,7 @@ export class PrismaService
             }
             return query(args);
           },
-          async findUnique({ model, args, query }) {
+          findUnique: async ({ model, args, query }) => {
             const result = await query(args);
             if (
               result &&
@@ -122,7 +120,7 @@ export class PrismaService
             }
             return result;
           },
-          async create({ model, args, query }) {
+          create: async ({ model, args, query }) => {
             if (modelsWithOrg.has(model)) {
               (args as any).data = {
                 ...(args as any).data,
@@ -131,10 +129,10 @@ export class PrismaService
             }
             return query(args);
           },
-          async update({ model, args, query }) {
+          update: async ({ model, args, query }) => {
             if (modelsWithOrg.has(model)) {
               const dbName = model.charAt(0).toLowerCase() + model.slice(1);
-              const db = (self as any)[dbName];
+              const db = (this as any)[dbName];
               if (db) {
                 const count = await db.count({
                   where: { ...(args as any).where, organizationId: tenantId },
@@ -148,7 +146,7 @@ export class PrismaService
             }
             return query(args);
           },
-          async updateMany({ model, args, query }) {
+          updateMany: async ({ model, args, query }) => {
             if (modelsWithOrg.has(model)) {
               (args as any).where = {
                 ...(args as any).where,
@@ -157,10 +155,10 @@ export class PrismaService
             }
             return query(args);
           },
-          async delete({ model, args, query }) {
+          delete: async ({ model, args, query }) => {
             if (modelsWithOrg.has(model)) {
               const dbName = model.charAt(0).toLowerCase() + model.slice(1);
-              const db = (self as any)[dbName];
+              const db = (this as any)[dbName];
               if (db) {
                 const count = await db.count({
                   where: { ...(args as any).where, organizationId: tenantId },
@@ -174,7 +172,7 @@ export class PrismaService
             }
             return query(args);
           },
-          async deleteMany({ model, args, query }) {
+          deleteMany: async ({ model, args, query }) => {
             if (modelsWithOrg.has(model)) {
               (args as any).where = {
                 ...(args as any).where,
@@ -183,7 +181,7 @@ export class PrismaService
             }
             return query(args);
           },
-          async count({ model, args, query }) {
+          count: async ({ model, args, query }) => {
             if (modelsWithOrg.has(model)) {
               (args as any).where = {
                 ...(args as any).where,
@@ -192,7 +190,7 @@ export class PrismaService
             }
             return query(args);
           },
-          async aggregate({ model, args, query }) {
+          aggregate: async ({ model, args, query }) => {
             if (modelsWithOrg.has(model)) {
               (args as any).where = {
                 ...(args as any).where,
@@ -201,7 +199,7 @@ export class PrismaService
             }
             return query(args);
           },
-          async groupBy({ model, args, query }) {
+          groupBy: async ({ model, args, query }) => {
             if (modelsWithOrg.has(model)) {
               (args as any).where = {
                 ...(args as any).where,

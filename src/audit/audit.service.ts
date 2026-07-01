@@ -1,4 +1,3 @@
-import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -8,6 +7,7 @@ export interface AuditLogData {
   entityId: string; // ID of the affected entity
   details?: any; // Extra info about the action (changes, old values, etc)
   performedBy?: string; // User ID who performed the action
+  organizationId?: string; // Scoped organization ID
   metadata?: {
     oldValues?: any;
     newValues?: any;
@@ -21,7 +21,7 @@ export interface AuditLogData {
 
 @Injectable()
 export class AuditService {
-  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
+  constructor(private prisma: PrismaService) {}
 
   /**
    * Generate navigation link based on entity type and action
@@ -106,13 +106,17 @@ export class AuditService {
         data.metadata,
       );
 
-      await this.tenantPrisma.client.actionHistory.create({
+      const orgId =
+        data.organizationId || (data.metadata as any)?.organizationId;
+
+      await this.prisma.actionHistory.create({
         data: {
           actionType: data.actionType,
           entityType: data.entityType,
           entityId: data.entityId.toString(), // تحويل إلى string
           details: data.details || data.metadata || {},
           performedBy: data.performedBy,
+          organizationId: orgId,
           link: link, // Use the generated link
         },
       });
@@ -256,12 +260,19 @@ export class AuditService {
     entityType: string,
     entityId: string,
     limit: number = 50,
+    tenantId: string | null = null,
+    isSuperAdmin: boolean = true,
   ) {
-    return this.tenantPrisma.client.actionHistory.findMany({
-      where: {
-        entityType: entityType.toUpperCase(),
-        entityId,
-      },
+    const where: any = {
+      entityType: entityType.toUpperCase(),
+      entityId,
+    };
+    if (!isSuperAdmin && tenantId) {
+      where.organizationId = tenantId;
+    }
+
+    return this.prisma.actionHistory.findMany({
+      where,
       include: {
         user: {
           select: {
@@ -281,11 +292,21 @@ export class AuditService {
   /**
    * Get audit history for a specific action type
    */
-  async getActionHistory(actionType: string, limit: number = 100) {
-    return this.tenantPrisma.client.actionHistory.findMany({
-      where: {
-        actionType: actionType.toUpperCase(),
-      },
+  async getActionHistory(
+    actionType: string,
+    limit: number = 100,
+    tenantId: string | null = null,
+    isSuperAdmin: boolean = true,
+  ) {
+    const where: any = {
+      actionType: actionType.toUpperCase(),
+    };
+    if (!isSuperAdmin && tenantId) {
+      where.organizationId = tenantId;
+    }
+
+    return this.prisma.actionHistory.findMany({
+      where,
       include: {
         user: {
           select: {
@@ -305,11 +326,21 @@ export class AuditService {
   /**
    * Get audit history for a specific entity type
    */
-  async getEntityTypeHistory(entityType: string, limit: number = 100) {
-    return this.tenantPrisma.client.actionHistory.findMany({
-      where: {
-        entityType: entityType.toUpperCase(),
-      },
+  async getEntityTypeHistory(
+    entityType: string,
+    limit: number = 100,
+    tenantId: string | null = null,
+    isSuperAdmin: boolean = true,
+  ) {
+    const where: any = {
+      entityType: entityType.toUpperCase(),
+    };
+    if (!isSuperAdmin && tenantId) {
+      where.organizationId = tenantId;
+    }
+
+    return this.prisma.actionHistory.findMany({
+      where,
       include: {
         user: {
           select: {
@@ -329,8 +360,14 @@ export class AuditService {
   /**
    * Get recent audit history across all entities
    */
-  async getRecentHistory(limit: number = 100) {
-    return this.tenantPrisma.client.actionHistory.findMany({
+  async getRecentHistory(
+    limit: number = 100,
+    tenantId: string | null = null,
+    isSuperAdmin: boolean = true,
+  ) {
+    const where = !isSuperAdmin && tenantId ? { organizationId: tenantId } : {};
+    return this.prisma.actionHistory.findMany({
+      where,
       include: {
         user: {
           select: {
@@ -347,61 +384,54 @@ export class AuditService {
     });
   }
 
-  /**
-   * Get audit statistics
-   */
-  async getAuditStatistics(days: number = 30) {
+  async getAuditStatistics(
+    days: number = 30,
+    tenantId: string | null = null,
+    isSuperAdmin: boolean = true,
+  ) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
+
+    const baseWhere: any = {
+      createdAt: {
+        gte: startDate,
+      },
+    };
+    if (!isSuperAdmin && tenantId) {
+      baseWhere.organizationId = tenantId;
+    }
+
+    const topUsersWhere = { ...baseWhere, performedBy: { not: null } };
 
     const [totalActions, actionsByType, actionsByEntity, topUsers] =
       await Promise.all([
         // Total actions in the period
-        this.tenantPrisma.client.actionHistory.count({
-          where: {
-            createdAt: {
-              gte: startDate,
-            },
-          },
+        this.prisma.actionHistory.count({
+          where: baseWhere,
         }),
 
         // Actions grouped by type
-        this.tenantPrisma.client.actionHistory.groupBy({
+        this.prisma.actionHistory.groupBy({
           by: ['actionType'],
-          where: {
-            createdAt: {
-              gte: startDate,
-            },
-          },
+          where: baseWhere,
           _count: {
             id: true,
           },
         }),
 
         // Actions grouped by entity type
-        this.tenantPrisma.client.actionHistory.groupBy({
+        this.prisma.actionHistory.groupBy({
           by: ['entityType'],
-          where: {
-            createdAt: {
-              gte: startDate,
-            },
-          },
+          where: baseWhere,
           _count: {
             id: true,
           },
         }),
 
         // Top users by activity
-        this.tenantPrisma.client.actionHistory.groupBy({
+        this.prisma.actionHistory.groupBy({
           by: ['performedBy'],
-          where: {
-            createdAt: {
-              gte: startDate,
-            },
-            performedBy: {
-              not: null,
-            },
-          },
+          where: topUsersWhere,
           _count: {
             id: true,
           },
