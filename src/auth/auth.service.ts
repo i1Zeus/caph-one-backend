@@ -35,8 +35,9 @@ export class AuthService {
   }
 
   async login(user: any) {
+    const isSuperAdmin = user.isSuperAdmin === true || user.role === 'SUPER_ADMIN';
     // Validate organization status for non-superadmins
-    if (!user.isSuperAdmin) {
+    if (!isSuperAdmin) {
       if (!user.organizationId) {
         throw new ForbiddenException(
           'You are not assigned to any organization.',

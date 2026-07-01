@@ -40,7 +40,7 @@ export class TenantGuard implements CanActivate {
     }
 
     // 2. SuperAdmin bypass
-    if (user.isSuperAdmin) {
+    if (user.isSuperAdmin || user.role === 'SUPER_ADMIN') {
       return true;
     }
 

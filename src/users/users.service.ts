@@ -520,7 +520,9 @@ export class UsersService {
         email: true,
         phone: true,
         img: true,
-        // role field removed - now using userRoles relation
+        isSuperAdmin: true,
+        role: true,
+        organizationId: true,
         createdAt: true,
         updatedAt: true,
         type: true,

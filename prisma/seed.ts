@@ -169,7 +169,7 @@ async function main() {
       isDeleted: false, // Restore user if it was soft-deleted
       isSuperAdmin: true,
       role: 'SUPER_ADMIN',
-      organizationId: defaultOrg.id,
+      organizationId: null,
     },
     create: {
       name: 'Super Admin',
@@ -179,7 +179,7 @@ async function main() {
       isDeleted: false,
       isSuperAdmin: true,
       role: 'SUPER_ADMIN',
-      organizationId: defaultOrg.id,
+      organizationId: null,
       firstName: 'Super',
       lastName: 'Admin',
     },
@@ -211,29 +211,29 @@ async function main() {
     `✅ Created/Found workspace: ${defaultWorkspace.name} (${defaultWorkspace.slug})`,
   );
 
-  // Connect user to workspace as OWNER
-  console.log('🔗 Connecting user to workspace...');
-  const workspaceUser = await prisma.workspaceUser.upsert({
-    where: {
-      workspaceId_userId: {
-        workspaceId: defaultWorkspace.id,
-        userId: targetUser.id,
-      },
-    },
-    update: {
-      role: 'OWNER', // Ensure the user is the owner
-    },
-    create: {
-      workspaceId: defaultWorkspace.id,
-      userId: targetUser.id,
-      role: 'OWNER',
-    },
-  });
-  console.log(`✅ Connected user to workspace as OWNER`);
-  console.log(`   Workspace User ID: ${workspaceUser.id}`);
-  console.log(`   Workspace ID: ${workspaceUser.workspaceId}`);
-  console.log(`   User ID: ${workspaceUser.userId}`);
-  console.log(`   Role: ${workspaceUser.role}`);
+  // Connect user to workspace as OWNER (Skipped for Super Admin)
+  // console.log('🔗 Connecting user to workspace...');
+  // const workspaceUser = await prisma.workspaceUser.upsert({
+  //   where: {
+  //     workspaceId_userId: {
+  //       workspaceId: defaultWorkspace.id,
+  //       userId: targetUser.id,
+  //     },
+  //   },
+  //   update: {
+  //     role: 'OWNER', // Ensure the user is the owner
+  //   },
+  //   create: {
+  //     workspaceId: defaultWorkspace.id,
+  //     userId: targetUser.id,
+  //     role: 'OWNER',
+  //   },
+  // });
+  // console.log(`✅ Connected user to workspace as OWNER`);
+  // console.log(`   Workspace User ID: ${workspaceUser.id}`);
+  // console.log(`   Workspace ID: ${workspaceUser.workspaceId}`);
+  // console.log(`   User ID: ${workspaceUser.userId}`);
+  // console.log(`   Role: ${workspaceUser.role}`);
 
   // Remove any existing roles for this user (clean slate)
   await prisma.userRole.deleteMany({
@@ -261,7 +261,7 @@ async function main() {
   console.log(
     `🏢 Workspace created: ${defaultWorkspace.name} (${defaultWorkspace.slug})`,
   );
-  console.log(`🔗 User connected to workspace as: OWNER`);
+  // console.log(`🔗 User connected to workspace as: OWNER`);
   console.log('');
 
   // Verification: Check user roles and permissions
