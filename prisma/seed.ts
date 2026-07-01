@@ -234,46 +234,6 @@ async function main() {
   console.log(`🔗 User connected to workspace as: OWNER`);
   console.log('');
 
-  // Verification: Check that the user can see the workspace
-  console.log('🔍 Verifying workspace visibility...');
-  const userWorkspaces = await prisma.workspace.findMany({
-    where: {
-      isDeleted: false,
-      members: {
-        some: {
-          userId: targetUser.id,
-        },
-      },
-    },
-    include: {
-      members: {
-        where: {
-          userId: targetUser.id,
-        },
-        select: {
-          userId: true,
-          role: true,
-        },
-      },
-    },
-  });
-
-  if (userWorkspaces.length > 0) {
-    console.log(
-      `✅ User can see ${userWorkspaces.length} workspace(s):`,
-    );
-    for (const ws of userWorkspaces) {
-      const member = ws.members[0];
-      console.log(
-        `   - ${ws.name} (${ws.slug}) as ${member?.role || 'UNKNOWN'}`,
-      );
-    }
-  } else {
-    console.log(
-      `❌ WARNING: User cannot see any workspaces! This may indicate an issue.`,
-    );
-  }
-
   // Verification: Check user roles and permissions
   console.log('🔍 Verifying user role and permissions...');
   const userRolesCheck = await prisma.userRole.findMany({
@@ -295,13 +255,16 @@ async function main() {
       const permCount = ur.role.rolePermissions.length;
       console.log(`   - ${ur.role.name} (${permCount} permissions)`);
       // Show first few permissions as sample
-      const samplePerms = ur.role.rolePermissions.slice(0, 3).map(rp => rp.permission.name).join(', ');
-      console.log(`     Sample: ${samplePerms}${ur.role.rolePermissions.length > 3 ? '...' : ''}`);
+      const samplePerms = ur.role.rolePermissions
+        .slice(0, 3)
+        .map((rp) => rp.permission.name)
+        .join(', ');
+      console.log(
+        `     Sample: ${samplePerms}${ur.role.rolePermissions.length > 3 ? '...' : ''}`,
+      );
     }
   } else {
-    console.log(
-      `❌ WARNING: User has no roles! This may indicate an issue.`,
-    );
+    console.log(`❌ WARNING: User has no roles! This may indicate an issue.`);
   }
 
   console.log('');
