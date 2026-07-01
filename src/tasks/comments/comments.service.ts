@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   ForbiddenException,
@@ -13,7 +14,7 @@ import { Comment } from '../entities/comment.entity';
 @Injectable()
 export class CommentsService {
   constructor(
-    private prisma: PrismaService,
+    private prisma: PrismaService, private tenantPrisma: TenantPrismaService,
     private notificationsService: NotificationsService,
   ) {}
 
@@ -23,7 +24,7 @@ export class CommentsService {
   ): Promise<Comment> {
     try {
       // Verify that the task exists
-      const task = await this.prisma.task.findFirst({
+      const task = await this.tenantPrisma.client.task.findFirst({
         where: {
           id: createCommentDto.taskId,
           isDeleted: false,
@@ -35,7 +36,7 @@ export class CommentsService {
       }
 
       // Verify that the author exists
-      const author = await this.prisma.user.findUnique({
+      const author = await this.tenantPrisma.client.user.findUnique({
         where: { id: authorId },
       });
 
@@ -43,7 +44,7 @@ export class CommentsService {
         throw new BadRequestException('Author not found');
       }
 
-      const comment = await this.prisma.comment.create({
+      const comment = await this.tenantPrisma.client.comment.create({
         data: {
           content: createCommentDto.content,
           taskId: createCommentDto.taskId,
@@ -140,7 +141,7 @@ export class CommentsService {
 
   async getTaskComments(taskId: string): Promise<Comment[]> {
     // Verify task exists
-    const task = await this.prisma.task.findFirst({
+    const task = await this.tenantPrisma.client.task.findFirst({
       where: {
         id: taskId,
         isDeleted: false,
@@ -151,7 +152,7 @@ export class CommentsService {
       throw new NotFoundException('Task not found');
     }
 
-    const comments = await this.prisma.comment.findMany({
+    const comments = await this.tenantPrisma.client.comment.findMany({
       where: {
         taskId,
         isDeleted: false,
@@ -195,7 +196,7 @@ export class CommentsService {
   }
 
   async findOne(id: string): Promise<Comment> {
-    const comment = await this.prisma.comment.findFirst({
+    const comment = await this.tenantPrisma.client.comment.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -245,7 +246,7 @@ export class CommentsService {
     userId: string,
   ): Promise<Comment> {
     // Check if comment exists
-    const existingComment = await this.prisma.comment.findFirst({
+    const existingComment = await this.tenantPrisma.client.comment.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -262,7 +263,7 @@ export class CommentsService {
     }
 
     try {
-      const comment = await this.prisma.comment.update({
+      const comment = await this.tenantPrisma.client.comment.update({
         where: { id },
         data: {
           content: updateCommentDto.content,
@@ -314,7 +315,7 @@ export class CommentsService {
 
   async remove(id: string, userId: string): Promise<{ message: string }> {
     // Check if comment exists
-    const existingComment = await this.prisma.comment.findFirst({
+    const existingComment = await this.tenantPrisma.client.comment.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -332,7 +333,7 @@ export class CommentsService {
 
     try {
       // Soft delete the comment
-      await this.prisma.comment.update({
+      await this.tenantPrisma.client.comment.update({
         where: { id },
         data: {
           isDeleted: true,
@@ -350,7 +351,7 @@ export class CommentsService {
     commentId: string,
     userId: string,
   ): Promise<boolean> {
-    const comment = await this.prisma.comment.findFirst({
+    const comment = await this.tenantPrisma.client.comment.findFirst({
       where: {
         id: commentId,
         isDeleted: false,

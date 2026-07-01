@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,7 +16,7 @@ export class AiService {
   constructor(
     private readonly transcriptionAgent: TranscriptionAgent,
     private readonly taskCreationAgent: TaskCreationAgent,
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService,
     private readonly usersService: UsersService,
   ) {
     this.openai = new OpenAI({
@@ -30,7 +31,7 @@ export class AiService {
     projectId: string,
   ): Promise<string | null> {
     try {
-      const project = await this.prisma.project.findUnique({
+      const project = await this.tenantPrisma.client.project.findUnique({
         where: {
           id: projectId,
           isDeleted: false,

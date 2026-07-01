@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -11,11 +12,11 @@ import { ClientQueryDto, CreateClientDto, UpdateClientDto } from './dto';
 export class ClientsService {
   private readonly logger = new Logger(ClientsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createClientDto: CreateClientDto) {
     try {
-      const client = await this.prisma.client.create({
+      const client = await this.tenantPrisma.client.client.create({
         data: createClientDto,
       });
       this.logger.log(`Created client: ${client.name}`);
@@ -58,7 +59,7 @@ export class ClientsService {
       const sortField = validSortFields.includes(sortBy) ? sortBy : 'name';
 
       const [clients, total] = await Promise.all([
-        this.prisma.client.findMany({
+        this.tenantPrisma.client.client.findMany({
           where: whereClause,
           include: {
             account: {
@@ -80,7 +81,7 @@ export class ClientsService {
           skip,
           take: limit,
         }),
-        this.prisma.client.count({ where: whereClause }),
+        this.tenantPrisma.client.client.count({ where: whereClause }),
       ]);
 
       const totalPages = Math.ceil(total / limit);
@@ -124,7 +125,7 @@ export class ClientsService {
         whereClause.type = type;
       }
 
-      const clients = await this.prisma.client.findMany({
+      const clients = await this.tenantPrisma.client.client.findMany({
         where: whereClause,
         include: {
           account: {
@@ -178,7 +179,7 @@ export class ClientsService {
 
   async findOne(id: number) {
     try {
-      const client = await this.prisma.client.findUnique({
+      const client = await this.tenantPrisma.client.client.findUnique({
         where: { id },
         include: {
           account: {
@@ -251,7 +252,7 @@ export class ClientsService {
 
   async getClientTransactions(id: number) {
     try {
-      const client = await this.prisma.client.findUnique({
+      const client = await this.tenantPrisma.client.client.findUnique({
         where: { id },
       });
 
@@ -260,7 +261,7 @@ export class ClientsService {
       }
 
       // جلب المعاملات المرتبطة بالعميل
-      const transactions = await this.prisma.transaction.findMany({
+      const transactions = await this.tenantPrisma.client.transaction.findMany({
         where: {
           OR: [{ clientId: id }, { entries: { some: { clientId: id } } }],
         },
@@ -298,7 +299,7 @@ export class ClientsService {
 
   async update(id: number, updateClientDto: UpdateClientDto) {
     try {
-      const client = await this.prisma.client.update({
+      const client = await this.tenantPrisma.client.client.update({
         where: { id },
         data: updateClientDto,
       });
@@ -316,7 +317,7 @@ export class ClientsService {
   async remove(id: number) {
     try {
       // Check if client has transactions or transaction lines
-      const client = await this.prisma.client.findUnique({
+      const client = await this.tenantPrisma.client.client.findUnique({
         where: { id },
         include: {
           transactions: true,
@@ -337,7 +338,7 @@ export class ClientsService {
         );
       }
 
-      await this.prisma.client.delete({
+      await this.tenantPrisma.client.client.delete({
         where: { id },
       });
 

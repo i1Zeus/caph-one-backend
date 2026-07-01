@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -9,7 +10,7 @@ import { ApproveLeaveDto, CreateLeaveDto, UpdateLeaveDto } from './dto';
 
 @Injectable()
 export class LeavesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createLeaveDto: CreateLeaveDto): Promise<Leave> {
     try {
@@ -21,7 +22,7 @@ export class LeavesService {
       }
 
       // Check for overlapping leaves
-      const overlappingLeave = await this.prisma.leave.findFirst({
+      const overlappingLeave = await this.tenantPrisma.client.leave.findFirst({
         where: {
           employeeId: createLeaveDto.employeeId,
           isDeleted: false,
@@ -41,7 +42,7 @@ export class LeavesService {
         );
       }
 
-      return await this.prisma.leave.create({
+      return await this.tenantPrisma.client.leave.create({
         data: {
           ...createLeaveDto,
           startDate,
@@ -97,7 +98,7 @@ export class LeavesService {
     };
 
     const [leaves, total] = await Promise.all([
-      this.prisma.leave.findMany({
+      this.tenantPrisma.client.leave.findMany({
         where,
         skip,
         take: limit,
@@ -107,7 +108,7 @@ export class LeavesService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.leave.count({ where }),
+      this.tenantPrisma.client.leave.count({ where }),
     ]);
 
     return {
@@ -120,7 +121,7 @@ export class LeavesService {
   }
 
   async findOne(id: string): Promise<Leave> {
-    const leave = await this.prisma.leave.findUnique({
+    const leave = await this.tenantPrisma.client.leave.findUnique({
       where: { id, isDeleted: false },
       include: {
         employee: true,
@@ -139,7 +140,7 @@ export class LeavesService {
     await this.findOne(id);
 
     try {
-      return await this.prisma.leave.update({
+      return await this.tenantPrisma.client.leave.update({
         where: { id },
         data: {
           ...updateLeaveDto,
@@ -167,7 +168,7 @@ export class LeavesService {
       throw new BadRequestException('Leave request is not pending');
     }
 
-    return await this.prisma.leave.update({
+    return await this.tenantPrisma.client.leave.update({
       where: { id },
       data: {
         status: approveLeaveDto.status,
@@ -183,7 +184,7 @@ export class LeavesService {
   async remove(id: string): Promise<Leave> {
     await this.findOne(id);
 
-    return await this.prisma.leave.update({
+    return await this.tenantPrisma.client.leave.update({
       where: { id },
       data: { isDeleted: true },
       include: {
@@ -195,13 +196,13 @@ export class LeavesService {
 
   async getLeaveStats() {
     const [pending, approved, rejected] = await Promise.all([
-      this.prisma.leave.count({
+      this.tenantPrisma.client.leave.count({
         where: { isDeleted: false, status: 'PENDING' },
       }),
-      this.prisma.leave.count({
+      this.tenantPrisma.client.leave.count({
         where: { isDeleted: false, status: 'APPROVED' },
       }),
-      this.prisma.leave.count({
+      this.tenantPrisma.client.leave.count({
         where: { isDeleted: false, status: 'REJECTED' },
       }),
     ]);
@@ -214,7 +215,7 @@ export class LeavesService {
   }
 
   async getEmployeeLeaveBalance(employeeId: string) {
-    const employee = await this.prisma.employee.findUnique({
+    const employee = await this.tenantPrisma.client.employee.findUnique({
       where: { id: employeeId },
       select: { leavesAllowed: true },
     });
@@ -227,7 +228,7 @@ export class LeavesService {
     const yearStart = new Date(currentYear, 0, 1);
     const yearEnd = new Date(currentYear, 11, 31);
 
-    const approvedLeaves = await this.prisma.leave.findMany({
+    const approvedLeaves = await this.tenantPrisma.client.leave.findMany({
       where: {
         employeeId,
         status: 'APPROVED',

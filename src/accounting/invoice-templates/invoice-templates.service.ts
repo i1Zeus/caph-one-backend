@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -9,11 +10,11 @@ import { CreateInvoiceTemplateDto, UpdateInvoiceTemplateDto } from './dto';
 
 @Injectable()
 export class InvoiceTemplatesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createInvoiceTemplateDto: CreateInvoiceTemplateDto) {
     // Check if template with this type already exists
-    const existing = await this.prisma.invoiceTemplate.findUnique({
+    const existing = await this.tenantPrisma.client.invoiceTemplate.findUnique({
       where: { type: createInvoiceTemplateDto.type },
     });
 
@@ -23,7 +24,7 @@ export class InvoiceTemplatesService {
         return this.update(existing.id, createInvoiceTemplateDto);
       } else {
         // If exists but deleted, restore it
-        return this.prisma.invoiceTemplate.update({
+        return this.tenantPrisma.client.invoiceTemplate.update({
           where: { id: existing.id },
           data: {
             ...createInvoiceTemplateDto,
@@ -34,20 +35,20 @@ export class InvoiceTemplatesService {
     }
 
     // Create new template
-    return this.prisma.invoiceTemplate.create({
+    return this.tenantPrisma.client.invoiceTemplate.create({
       data: createInvoiceTemplateDto,
     });
   }
 
   async findAll() {
-    return this.prisma.invoiceTemplate.findMany({
+    return this.tenantPrisma.client.invoiceTemplate.findMany({
       where: { isDeleted: false },
       orderBy: { type: 'asc' },
     });
   }
 
   async findByType(type: InvoiceTemplateType) {
-    const template = await this.prisma.invoiceTemplate.findUnique({
+    const template = await this.tenantPrisma.client.invoiceTemplate.findUnique({
       where: { type },
     });
 
@@ -59,7 +60,7 @@ export class InvoiceTemplatesService {
   }
 
   async findOne(id: number) {
-    const template = await this.prisma.invoiceTemplate.findUnique({
+    const template = await this.tenantPrisma.client.invoiceTemplate.findUnique({
       where: { id },
     });
 
@@ -79,7 +80,7 @@ export class InvoiceTemplatesService {
       updateInvoiceTemplateDto.type &&
       updateInvoiceTemplateDto.type !== existing.type
     ) {
-      const typeExists = await this.prisma.invoiceTemplate.findUnique({
+      const typeExists = await this.tenantPrisma.client.invoiceTemplate.findUnique({
         where: { type: updateInvoiceTemplateDto.type },
       });
 
@@ -90,7 +91,7 @@ export class InvoiceTemplatesService {
       }
     }
 
-    return this.prisma.invoiceTemplate.update({
+    return this.tenantPrisma.client.invoiceTemplate.update({
       where: { id },
       data: updateInvoiceTemplateDto,
     });
@@ -100,7 +101,7 @@ export class InvoiceTemplatesService {
     // Soft delete
     await this.findOne(id); // Will throw if not found
 
-    return this.prisma.invoiceTemplate.update({
+    return this.tenantPrisma.client.invoiceTemplate.update({
       where: { id },
       data: { isDeleted: true },
     });

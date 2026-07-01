@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -14,14 +15,14 @@ import {
 
 @Injectable()
 export class AttendancesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(
     createAttendanceDto: CreateAttendanceDto,
   ): Promise<EmployeeAttendance> {
     try {
       // Check if attendance already exists for this employee on this date
-      const existingAttendance = await this.prisma.employeeAttendance.findFirst(
+      const existingAttendance = await this.tenantPrisma.client.employeeAttendance.findFirst(
         {
           where: {
             employeeId: createAttendanceDto.employeeId,
@@ -37,7 +38,7 @@ export class AttendancesService {
         );
       }
 
-      return await this.prisma.employeeAttendance.create({
+      return await this.tenantPrisma.client.employeeAttendance.create({
         data: {
           ...createAttendanceDto,
           date: new Date(createAttendanceDto.date),
@@ -90,7 +91,7 @@ export class AttendancesService {
     };
 
     const [attendances, total] = await Promise.all([
-      this.prisma.employeeAttendance.findMany({
+      this.tenantPrisma.client.employeeAttendance.findMany({
         where,
         skip,
         take: limit,
@@ -103,7 +104,7 @@ export class AttendancesService {
         },
         orderBy: { date: 'desc' },
       }),
-      this.prisma.employeeAttendance.count({ where }),
+      this.tenantPrisma.client.employeeAttendance.count({ where }),
     ]);
 
     return {
@@ -116,7 +117,7 @@ export class AttendancesService {
   }
 
   async findOne(id: string): Promise<EmployeeAttendance> {
-    const attendance = await this.prisma.employeeAttendance.findUnique({
+    const attendance = await this.tenantPrisma.client.employeeAttendance.findUnique({
       where: { id, isDeleted: false },
       include: {
         employee: {
@@ -141,7 +142,7 @@ export class AttendancesService {
     await this.findOne(id);
 
     try {
-      return await this.prisma.employeeAttendance.update({
+      return await this.tenantPrisma.client.employeeAttendance.update({
         where: { id },
         data: {
           ...updateAttendanceDto,
@@ -172,7 +173,7 @@ export class AttendancesService {
   async remove(id: string): Promise<EmployeeAttendance> {
     await this.findOne(id);
 
-    return await this.prisma.employeeAttendance.update({
+    return await this.tenantPrisma.client.employeeAttendance.update({
       where: { id },
       data: { isDeleted: true },
       include: {
@@ -193,7 +194,7 @@ export class AttendancesService {
         : {};
 
     const [present, remote] = await Promise.all([
-      this.prisma.employeeAttendance.count({
+      this.tenantPrisma.client.employeeAttendance.count({
         where: {
           isDeleted: false,
           sn: null, // Only count main records
@@ -201,7 +202,7 @@ export class AttendancesService {
           ...dateFilter,
         },
       }),
-      this.prisma.employeeAttendance.count({
+      this.tenantPrisma.client.employeeAttendance.count({
         where: {
           isDeleted: false,
           sn: null, // Only count main records
@@ -224,7 +225,7 @@ export class AttendancesService {
     );
 
     // Check if already clocked in today
-    const existingAttendance = await this.prisma.employeeAttendance.findFirst({
+    const existingAttendance = await this.tenantPrisma.client.employeeAttendance.findFirst({
       where: {
         employeeId,
         date: today,
@@ -238,7 +239,7 @@ export class AttendancesService {
         throw new BadRequestException('Already clocked in today');
       }
       // Update existing record with clock in time
-      return await this.prisma.employeeAttendance.update({
+      return await this.tenantPrisma.client.employeeAttendance.update({
         where: { id: existingAttendance.id },
         data: {
           timeIn: new Date(),
@@ -251,7 +252,7 @@ export class AttendancesService {
     }
 
     // Create new attendance record
-    return await this.prisma.employeeAttendance.create({
+    return await this.tenantPrisma.client.employeeAttendance.create({
       data: {
         employeeId,
         date: today,
@@ -270,7 +271,7 @@ export class AttendancesService {
       Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()),
     );
 
-    const attendance = await this.prisma.employeeAttendance.findFirst({
+    const attendance = await this.tenantPrisma.client.employeeAttendance.findFirst({
       where: {
         employeeId,
         date: today,
@@ -287,7 +288,7 @@ export class AttendancesService {
       throw new BadRequestException('Already clocked out today');
     }
 
-    return await this.prisma.employeeAttendance.update({
+    return await this.tenantPrisma.client.employeeAttendance.update({
       where: { id: attendance.id },
       data: {
         timeOut: new Date(),
@@ -303,7 +304,7 @@ export class AttendancesService {
   ): Promise<EmployeeAttendance> {
     try {
       // Find employee by fingerprint ID
-      const employee = await this.prisma.employee.findUnique({
+      const employee = await this.tenantPrisma.client.employee.findUnique({
         where: {
           fingerPrintId: deviceRecord.user_id,
           isDeleted: false,
@@ -328,7 +329,7 @@ export class AttendancesService {
       );
 
       // Find existing attendance record for this employee on this date
-      const existingAttendance = await this.prisma.employeeAttendance.findFirst(
+      const existingAttendance = await this.tenantPrisma.client.employeeAttendance.findFirst(
         {
           where: {
             employeeId: employee.id,
@@ -359,7 +360,7 @@ export class AttendancesService {
           updateData.timeOut = latestTime;
         }
 
-        return await this.prisma.employeeAttendance.update({
+        return await this.tenantPrisma.client.employeeAttendance.update({
           where: { id: existingAttendance.id },
           data: updateData,
           include: {
@@ -368,7 +369,7 @@ export class AttendancesService {
         });
       } else {
         // Create new attendance record - only timeIn, no timeOut
-        return await this.prisma.employeeAttendance.create({
+        return await this.tenantPrisma.client.employeeAttendance.create({
           data: {
             employeeId: employee.id,
             date: date,
@@ -416,7 +417,7 @@ export class AttendancesService {
       const uniqueFingerPrintIds = [
         ...new Set(bulkDeviceDto.records.map((r) => r.user_id)),
       ];
-      const employees = await this.prisma.employee.findMany({
+      const employees = await this.tenantPrisma.client.employee.findMany({
         where: {
           fingerPrintId: {
             in: uniqueFingerPrintIds,
@@ -443,7 +444,7 @@ export class AttendancesService {
       >();
 
       for (const record of bulkDeviceDto.records) {
-        const employeeId = employeeMap.get(record.user_id);
+        const employeeId = employeeMap.get(record.user_id) as string;
 
         if (!employeeId) {
           errors.push({
@@ -488,7 +489,7 @@ export class AttendancesService {
         );
 
         // Use transaction for each chunk to ensure data consistency
-        await this.prisma.$transaction(
+        await this.tenantPrisma.client.$transaction(
           async (prisma) => {
             // Process each employee-date group
             for (const [, records] of chunk) {

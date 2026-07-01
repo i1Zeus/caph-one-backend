@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   DeleteObjectCommand,
   PutObjectCommand,
@@ -27,7 +28,7 @@ export class EmployeeDocumentsService {
   private cdnUrl: string;
 
   constructor(
-    private prisma: PrismaService,
+    private prisma: PrismaService, private tenantPrisma: TenantPrismaService,
     private configService: ConfigService,
   ) {
     // Initialize S3 client for Cloudflare R2
@@ -53,7 +54,7 @@ export class EmployeeDocumentsService {
   ) {
     try {
       // Verify employee exists
-      const employee = await this.prisma.employee.findUnique({
+      const employee = await this.tenantPrisma.client.employee.findUnique({
         where: { id: createDto.employeeId, isDeleted: false },
       });
 
@@ -81,7 +82,7 @@ export class EmployeeDocumentsService {
       const url = `${this.cdnUrl}/${key}`;
 
       // Create document record
-      const document = await this.prisma.employeeDocument.create({
+      const document = await this.tenantPrisma.client.employeeDocument.create({
         data: {
           employeeId: createDto.employeeId,
           type: createDto.type,
@@ -169,7 +170,7 @@ export class EmployeeDocumentsService {
     orderBy[sortBy] = sortOrder;
 
     const [documents, total] = await Promise.all([
-      this.prisma.employeeDocument.findMany({
+      this.tenantPrisma.client.employeeDocument.findMany({
         where,
         skip,
         take: limit,
@@ -197,7 +198,7 @@ export class EmployeeDocumentsService {
         },
         orderBy,
       }),
-      this.prisma.employeeDocument.count({ where }),
+      this.tenantPrisma.client.employeeDocument.count({ where }),
     ]);
 
     return {
@@ -214,7 +215,7 @@ export class EmployeeDocumentsService {
   }
 
   async findOne(id: string) {
-    const document = await this.prisma.employeeDocument.findUnique({
+    const document = await this.tenantPrisma.client.employeeDocument.findUnique({
       where: { id, isDeleted: false },
       include: {
         employee: {
@@ -248,7 +249,7 @@ export class EmployeeDocumentsService {
   }
 
   async findByEmployee(employeeId: string) {
-    const employee = await this.prisma.employee.findUnique({
+    const employee = await this.tenantPrisma.client.employee.findUnique({
       where: { id: employeeId, isDeleted: false },
     });
 
@@ -256,7 +257,7 @@ export class EmployeeDocumentsService {
       throw new NotFoundException('Employee not found');
     }
 
-    return this.prisma.employeeDocument.findMany({
+    return this.tenantPrisma.client.employeeDocument.findMany({
       where: {
         employeeId,
         isDeleted: false,
@@ -279,7 +280,7 @@ export class EmployeeDocumentsService {
   async update(id: string, updateDto: UpdateEmployeeDocumentDto) {
     // const document = await this.findOne(id);
 
-    const updatedDocument = await this.prisma.employeeDocument.update({
+    const updatedDocument = await this.tenantPrisma.client.employeeDocument.update({
       where: { id },
       data: {
         type: updateDto.type,
@@ -326,7 +327,7 @@ export class EmployeeDocumentsService {
       await this.s3Client.send(deleteCommand);
 
       // Soft delete from database
-      await this.prisma.employeeDocument.update({
+      await this.tenantPrisma.client.employeeDocument.update({
         where: { id },
         data: { isDeleted: true },
       });
@@ -349,15 +350,15 @@ export class EmployeeDocumentsService {
     }
 
     const [totalDocuments, documentsByType, totalSize] = await Promise.all([
-      this.prisma.employeeDocument.count({ where }),
-      this.prisma.employeeDocument.groupBy({
+      this.tenantPrisma.client.employeeDocument.count({ where }),
+      this.tenantPrisma.client.employeeDocument.groupBy({
         by: ['type'],
         where,
         _count: {
           type: true,
         },
       }),
-      this.prisma.employeeDocument.aggregate({
+      this.tenantPrisma.client.employeeDocument.aggregate({
         where,
         _sum: {
           fileSize: true,
@@ -382,7 +383,7 @@ export class EmployeeDocumentsService {
     const futureDate = new Date();
     futureDate.setDate(today.getDate() + daysBeforeExpiry);
 
-    const documents = await this.prisma.employeeDocument.findMany({
+    const documents = await this.tenantPrisma.client.employeeDocument.findMany({
       where: {
         isDeleted: false,
         expiryDate: {
@@ -427,7 +428,7 @@ export class EmployeeDocumentsService {
   async getExpiredDocuments() {
     const today = new Date();
 
-    const documents = await this.prisma.employeeDocument.findMany({
+    const documents = await this.tenantPrisma.client.employeeDocument.findMany({
       where: {
         isDeleted: false,
         expiryDate: {

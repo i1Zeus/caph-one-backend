@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   ConflictException,
   Injectable,
@@ -12,13 +13,13 @@ import { Unit } from './entities/unit.entity';
 
 @Injectable()
 export class UnitCategoriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(
     createUnitCategoryDto: CreateUnitCategoryDto,
   ): Promise<UnitCategory> {
     // التحقق من وجود فئة الوحدة
-    const existingCategory = await this.prisma.unitCategory.findUnique({
+    const existingCategory = await this.tenantPrisma.client.unitCategory.findUnique({
       where: { name: createUnitCategoryDto.name },
     });
 
@@ -26,7 +27,7 @@ export class UnitCategoriesService {
       throw new ConflictException('اسم فئة الوحدة موجود مسبقاً');
     }
 
-    const category = await this.prisma.unitCategory.create({
+    const category = await this.tenantPrisma.client.unitCategory.create({
       data: createUnitCategoryDto,
     });
 
@@ -53,7 +54,7 @@ export class UnitCategoriesService {
     }
 
     const [categories, total] = await Promise.all([
-      this.prisma.unitCategory.findMany({
+      this.tenantPrisma.client.unitCategory.findMany({
         where,
         include: {
           units: {
@@ -72,7 +73,7 @@ export class UnitCategoriesService {
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.unitCategory.count({ where }),
+      this.tenantPrisma.client.unitCategory.count({ where }),
     ]);
 
     return {
@@ -99,7 +100,7 @@ export class UnitCategoriesService {
   }
 
   async findOne(id: number): Promise<UnitCategory> {
-    const category = await this.prisma.unitCategory.findFirst({
+    const category = await this.tenantPrisma.client.unitCategory.findFirst({
       where: { id, isDeleted: false },
       include: {
         units: {
@@ -130,7 +131,7 @@ export class UnitCategoriesService {
     updateUnitCategoryDto: UpdateUnitCategoryDto,
   ): Promise<UnitCategory> {
     // التحقق من وجود فئة الوحدة
-    const existingCategory = await this.prisma.unitCategory.findFirst({
+    const existingCategory = await this.tenantPrisma.client.unitCategory.findFirst({
       where: { id, isDeleted: false },
     });
 
@@ -143,7 +144,7 @@ export class UnitCategoriesService {
       updateUnitCategoryDto.name &&
       updateUnitCategoryDto.name !== existingCategory.name
     ) {
-      const duplicateCategory = await this.prisma.unitCategory.findUnique({
+      const duplicateCategory = await this.tenantPrisma.client.unitCategory.findUnique({
         where: { name: updateUnitCategoryDto.name },
       });
 
@@ -152,7 +153,7 @@ export class UnitCategoriesService {
       }
     }
 
-    const category = await this.prisma.unitCategory.update({
+    const category = await this.tenantPrisma.client.unitCategory.update({
       where: { id },
       data: updateUnitCategoryDto,
     });
@@ -161,7 +162,7 @@ export class UnitCategoriesService {
   }
 
   async remove(id: number): Promise<void> {
-    const category = await this.prisma.unitCategory.findFirst({
+    const category = await this.tenantPrisma.client.unitCategory.findFirst({
       where: { id, isDeleted: false },
     });
 
@@ -170,7 +171,7 @@ export class UnitCategoriesService {
     }
 
     // التحقق من وجود وحدات تستخدم هذه الفئة
-    const unitsCount = await this.prisma.unit.count({
+    const unitsCount = await this.tenantPrisma.client.unit.count({
       where: { categoryId: id, isDeleted: false },
     });
 
@@ -181,7 +182,7 @@ export class UnitCategoriesService {
     }
 
     // Soft delete
-    await this.prisma.unitCategory.update({
+    await this.tenantPrisma.client.unitCategory.update({
       where: { id },
       data: { isDeleted: true },
     });
@@ -190,11 +191,11 @@ export class UnitCategoriesService {
   async getCategoryStats() {
     const [totalCategories, activeCategories, categoriesWithUnits] =
       await Promise.all([
-        this.prisma.unitCategory.count({ where: { isDeleted: false } }),
-        this.prisma.unitCategory.count({
+        this.tenantPrisma.client.unitCategory.count({ where: { isDeleted: false } }),
+        this.tenantPrisma.client.unitCategory.count({
           where: { isDeleted: false, isActive: true },
         }),
-        this.prisma.unitCategory.count({
+        this.tenantPrisma.client.unitCategory.count({
           where: {
             isDeleted: false,
             units: {
@@ -214,7 +215,7 @@ export class UnitCategoriesService {
   }
 
   async getCategoryUnits(id: number) {
-    const category = await this.prisma.unitCategory.findFirst({
+    const category = await this.tenantPrisma.client.unitCategory.findFirst({
       where: { id, isDeleted: false },
       include: {
         units: {
@@ -301,13 +302,13 @@ export class UnitCategoriesService {
 
     for (const preset of presetCategories) {
       // Check if category already exists
-      const existingCategory = await this.prisma.unitCategory.findFirst({
+      const existingCategory = await this.tenantPrisma.client.unitCategory.findFirst({
         where: { name: preset.name, isDeleted: false },
       });
 
       if (!existingCategory) {
         // Create category
-        const category = await this.prisma.unitCategory.create({
+        const category = await this.tenantPrisma.client.unitCategory.create({
           data: {
             name: preset.name,
             description: preset.description,
@@ -317,7 +318,7 @@ export class UnitCategoriesService {
         // Create units for this category
         const units = await Promise.all(
           preset.units.map((unitData) =>
-            this.prisma.unit.create({
+            this.tenantPrisma.client.unit.create({
               data: {
                 name: unitData.name,
                 symbol: unitData.symbol,

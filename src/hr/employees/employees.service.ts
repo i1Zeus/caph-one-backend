@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -14,13 +15,13 @@ import {
 
 @Injectable()
 export class EmployeesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createEmployeeDto: CreateEmployeeDto): Promise<Employee> {
     try {
       // Check if fingerPrintId is unique if provided
       if (createEmployeeDto.fingerPrintId) {
-        const existingEmployee = await this.prisma.employee.findUnique({
+        const existingEmployee = await this.tenantPrisma.client.employee.findUnique({
           where: { fingerPrintId: createEmployeeDto.fingerPrintId },
         });
         if (existingEmployee) {
@@ -30,7 +31,7 @@ export class EmployeesService {
 
       // Check if userId is unique if provided
       if (createEmployeeDto.userId) {
-        const existingEmployee = await this.prisma.employee.findUnique({
+        const existingEmployee = await this.tenantPrisma.client.employee.findUnique({
           where: { userId: createEmployeeDto.userId },
         });
         if (existingEmployee) {
@@ -52,7 +53,7 @@ export class EmployeesService {
         delete employeeData.salary;
       }
 
-      return await this.prisma.employee.create({
+      return await this.tenantPrisma.client.employee.create({
         data: {
           ...employeeData,
           dateOfBirth: employeeData.dateOfBirth
@@ -115,7 +116,7 @@ export class EmployeesService {
     };
 
     const [employees, total] = await Promise.all([
-      this.prisma.employee.findMany({
+      this.tenantPrisma.client.employee.findMany({
         where,
         skip,
         take: limit,
@@ -127,7 +128,7 @@ export class EmployeesService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.employee.count({ where }),
+      this.tenantPrisma.client.employee.count({ where }),
     ]);
 
     return {
@@ -140,7 +141,7 @@ export class EmployeesService {
   }
 
   async findOne(id: string): Promise<Employee> {
-    const employee = await this.prisma.employee.findUnique({
+    const employee = await this.tenantPrisma.client.employee.findUnique({
       where: { id, isDeleted: false },
       include: {
         job: true,
@@ -188,7 +189,7 @@ export class EmployeesService {
       updateEmployeeDto.fingerPrintId !== null &&
       updateEmployeeDto.fingerPrintId !== employee.fingerPrintId
     ) {
-      const existingEmployee = await this.prisma.employee.findUnique({
+      const existingEmployee = await this.tenantPrisma.client.employee.findUnique({
         where: { fingerPrintId: updateEmployeeDto.fingerPrintId },
       });
       if (existingEmployee) {
@@ -201,7 +202,7 @@ export class EmployeesService {
       updateEmployeeDto.userId &&
       updateEmployeeDto.userId !== employee.userId
     ) {
-      const existingEmployee = await this.prisma.employee.findUnique({
+      const existingEmployee = await this.tenantPrisma.client.employee.findUnique({
         where: { userId: updateEmployeeDto.userId },
       });
       if (existingEmployee) {
@@ -231,7 +232,7 @@ export class EmployeesService {
         }
       }
 
-      return await this.prisma.employee.update({
+      return await this.tenantPrisma.client.employee.update({
         where: { id },
         data: {
           ...employeeData,
@@ -271,7 +272,7 @@ export class EmployeesService {
   async remove(id: string): Promise<Employee> {
     // const employee = await this.findOne(id);
 
-    return await this.prisma.employee.update({
+    return await this.tenantPrisma.client.employee.update({
       where: { id },
       data: { isDeleted: true },
       include: {
@@ -285,14 +286,14 @@ export class EmployeesService {
 
   async getEmployeeStats() {
     const [total, active, inactive, onLeave] = await Promise.all([
-      this.prisma.employee.count({ where: { isDeleted: false } }),
-      this.prisma.employee.count({
+      this.tenantPrisma.client.employee.count({ where: { isDeleted: false } }),
+      this.tenantPrisma.client.employee.count({
         where: { isDeleted: false, employmentStatus: 'ACTIVE' },
       }),
-      this.prisma.employee.count({
+      this.tenantPrisma.client.employee.count({
         where: { isDeleted: false, employmentStatus: 'INACTIVE' },
       }),
-      this.prisma.employee.count({
+      this.tenantPrisma.client.employee.count({
         where: { isDeleted: false, employmentStatus: 'ON_LEAVE' },
       }),
     ]);
@@ -306,7 +307,7 @@ export class EmployeesService {
   }
 
   async getEmployeesByJob() {
-    return await this.prisma.job.findMany({
+    return await this.tenantPrisma.client.job.findMany({
       where: { isDeleted: false },
       include: {
         _count: {

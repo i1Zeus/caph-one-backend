@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   ConflictException,
@@ -9,7 +10,7 @@ import { CreateCurrencyDto, UpdateCurrencyDto } from './dto';
 
 @Injectable()
 export class CurrenciesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createCurrencyDto: CreateCurrencyDto) {
     const {
@@ -23,7 +24,7 @@ export class CurrenciesService {
     } = createCurrencyDto;
 
     // Check if currency code already exists
-    const existingCurrency = await this.prisma.currency.findUnique({
+    const existingCurrency = await this.tenantPrisma.client.currency.findUnique({
       where: { code },
     });
 
@@ -33,13 +34,13 @@ export class CurrenciesService {
 
     // If this is set as main currency, unset other main currencies
     if (isMain) {
-      await this.prisma.currency.updateMany({
+      await this.tenantPrisma.client.currency.updateMany({
         where: { isMain: true },
         data: { isMain: false },
       });
     }
 
-    return this.prisma.currency.create({
+    return this.tenantPrisma.client.currency.create({
       data: {
         name,
         code,
@@ -53,7 +54,7 @@ export class CurrenciesService {
   }
 
   async findAll() {
-    return this.prisma.currency.findMany({
+    return this.tenantPrisma.client.currency.findMany({
       where: { isDeleted: false },
       orderBy: [
         { isMain: 'desc' }, // Main currency first
@@ -64,7 +65,7 @@ export class CurrenciesService {
   }
 
   async findActive() {
-    return this.prisma.currency.findMany({
+    return this.tenantPrisma.client.currency.findMany({
       where: {
         isDeleted: false,
         isActive: true,
@@ -74,7 +75,7 @@ export class CurrenciesService {
   }
 
   async findMain() {
-    const mainCurrency = await this.prisma.currency.findFirst({
+    const mainCurrency = await this.tenantPrisma.client.currency.findFirst({
       where: {
         isMain: true,
         isDeleted: false,
@@ -98,7 +99,7 @@ export class CurrenciesService {
   }
 
   async findOne(id: number) {
-    const currency = await this.prisma.currency.findUnique({
+    const currency = await this.tenantPrisma.client.currency.findUnique({
       where: { id, isDeleted: false },
     });
 
@@ -110,7 +111,7 @@ export class CurrenciesService {
   }
 
   async findByCode(code: string) {
-    const currency = await this.prisma.currency.findUnique({
+    const currency = await this.tenantPrisma.client.currency.findUnique({
       where: { code, isDeleted: false },
     });
 
@@ -128,7 +129,7 @@ export class CurrenciesService {
 
     // Check if changing code conflicts with existing currency
     if (code && code !== currency.code) {
-      const existingCurrency = await this.prisma.currency.findUnique({
+      const existingCurrency = await this.tenantPrisma.client.currency.findUnique({
         where: { code },
       });
 
@@ -141,7 +142,7 @@ export class CurrenciesService {
 
     // If setting as main currency, unset other main currencies
     if (isMain === true) {
-      await this.prisma.currency.updateMany({
+      await this.tenantPrisma.client.currency.updateMany({
         where: {
           isMain: true,
           id: { not: id },
@@ -150,7 +151,7 @@ export class CurrenciesService {
       });
     }
 
-    return this.prisma.currency.update({
+    return this.tenantPrisma.client.currency.update({
       where: { id },
       data: {
         ...updateData,
@@ -169,7 +170,7 @@ export class CurrenciesService {
     }
 
     // Check if currency is being used by any accounts
-    const accountsUsingCurrency = await this.prisma.account.count({
+    const accountsUsingCurrency = await this.tenantPrisma.client.account.count({
       where: {
         currencyId: id,
         isDeleted: false,
@@ -182,7 +183,7 @@ export class CurrenciesService {
       );
     }
 
-    return this.prisma.currency.update({
+    return this.tenantPrisma.client.currency.update({
       where: { id },
       data: { isDeleted: true },
     });
@@ -211,18 +212,18 @@ export class CurrenciesService {
 
   async updateExchangeRates(rates: { currencyId: number; rate: number }[]) {
     const updates = rates.map(({ currencyId, rate }) =>
-      this.prisma.currency.update({
+      this.tenantPrisma.client.currency.update({
         where: { id: currencyId },
         data: { rate },
       }),
     );
 
-    return this.prisma.$transaction(updates);
+    return this.tenantPrisma.client.$transaction(updates);
   }
 
   async getCurrencyStats(currencyId: number) {
     // Get accounts using this currency
-    const accountsCount = await this.prisma.account.count({
+    const accountsCount = await this.tenantPrisma.client.account.count({
       where: {
         currencyId: currencyId,
         isDeleted: false,
@@ -230,7 +231,7 @@ export class CurrenciesService {
     });
 
     // Get transaction lines involving accounts with this currency
-    const transactionLinesCount = await this.prisma.transactionLine.count({
+    const transactionLinesCount = await this.tenantPrisma.client.transactionLine.count({
       where: {
         account: {
           currencyId: currencyId,
@@ -242,7 +243,7 @@ export class CurrenciesService {
 
     // Get clients using this currency through their linked accounts
     // const currency = await this.findOne(currencyId);
-    const clientsCount = await this.prisma.client.count({
+    const clientsCount = await this.tenantPrisma.client.client.count({
       where: {
         account: {
           currencyId: currencyId,
@@ -251,14 +252,14 @@ export class CurrenciesService {
     });
 
     // Get invoices using this currency
-    const salesInvoicesCount = await this.prisma.salesInvoice.count({
+    const salesInvoicesCount = await this.tenantPrisma.client.salesInvoice.count({
       where: {
         currencyId: currencyId,
         isDeleted: false,
       },
     });
 
-    const purchaseInvoicesCount = await this.prisma.purchaseInvoice.count({
+    const purchaseInvoicesCount = await this.tenantPrisma.client.purchaseInvoice.count({
       where: {
         currencyId: currencyId,
         isDeleted: false,

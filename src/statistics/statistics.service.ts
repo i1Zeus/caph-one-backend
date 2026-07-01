@@ -1,9 +1,10 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class StatisticsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async getDashboardStats(workspaceId?: string) {
     try {
@@ -21,10 +22,10 @@ export class StatisticsService {
       // Batch 1: Basic counts
       const [totalUsers, totalProjects, totalTasks, totalComments] =
         await Promise.all([
-          this.prisma.user.count({ where: { isDeleted: false } }),
-          this.prisma.project.count({ where: projectWhereClause }),
-          this.prisma.task.count({ where: taskWhereClause }),
-          this.prisma.comment.count({
+          this.tenantPrisma.client.user.count({ where: { isDeleted: false } }),
+          this.tenantPrisma.client.project.count({ where: projectWhereClause }),
+          this.tenantPrisma.client.task.count({ where: taskWhereClause }),
+          this.tenantPrisma.client.comment.count({
             where: workspaceId
               ? { task: { project: { workspaceId } }, isDeleted: false }
               : { isDeleted: false },
@@ -38,18 +39,18 @@ export class StatisticsService {
         userRoleDistribution,
         projectStageBreakdown,
       ] = await Promise.all([
-        this.prisma.task.groupBy({
+        this.tenantPrisma.client.task.groupBy({
           by: ['status'],
           where: taskWhereClause,
           _count: { id: true },
         }),
-        this.prisma.task.groupBy({
+        this.tenantPrisma.client.task.groupBy({
           by: ['priority'],
           where: taskWhereClause,
           _count: { id: true },
         }),
         // Get role distribution using the new userRoles relation
-        this.prisma.role.findMany({
+        this.tenantPrisma.client.role.findMany({
           select: {
             id: true,
             name: true,
@@ -65,7 +66,7 @@ export class StatisticsService {
             },
           },
         }),
-        this.prisma.project.groupBy({
+        this.tenantPrisma.client.project.groupBy({
           by: ['projectStageId'],
           where: projectWhereClause,
           _count: { id: true },
@@ -80,14 +81,14 @@ export class StatisticsService {
         totalTransactions,
         recentActionHistory,
       ] = await Promise.all([
-        this.prisma.loginEvent.count({
+        this.tenantPrisma.client.loginEvent.count({
           where: {
             createdAt: {
               gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
             },
           },
         }),
-        this.prisma.task.count({
+        this.tenantPrisma.client.task.count({
           where: {
             ...taskWhereClause,
             createdAt: {
@@ -95,7 +96,7 @@ export class StatisticsService {
             },
           },
         }),
-        this.prisma.task.count({
+        this.tenantPrisma.client.task.count({
           where: {
             ...(workspaceId ? { project: { workspaceId } } : {}),
             status: 'COMPLETED',
@@ -104,8 +105,8 @@ export class StatisticsService {
             },
           },
         }),
-        this.prisma.transaction.count({ where: { isDeleted: false } }),
-        this.prisma.actionHistory.findMany({
+        this.tenantPrisma.client.transaction.count({ where: { isDeleted: false } }),
+        this.tenantPrisma.client.actionHistory.findMany({
           take: 10,
           orderBy: { createdAt: 'desc' },
           include: {
@@ -174,13 +175,13 @@ export class StatisticsService {
       tasksByProject,
     ] = await Promise.all([
       // Task completion rate
-      this.prisma.task
+      this.tenantPrisma.client.task
         .aggregate({
           where: taskWhereClause,
           _count: { id: true },
         })
         .then(async (total) => {
-          const completed = await this.prisma.task.count({
+          const completed = await this.tenantPrisma.client.task.count({
             where: {
               ...taskWhereClause,
               status: 'COMPLETED',
@@ -194,17 +195,17 @@ export class StatisticsService {
         }),
 
       // Average tasks per user
-      this.prisma.user
+      this.tenantPrisma.client.user
         .count({ where: { isDeleted: false } })
         .then(async (userCount) => {
-          const taskCount = await this.prisma.task.count({
+          const taskCount = await this.tenantPrisma.client.task.count({
             where: taskWhereClause,
           });
           return userCount > 0 ? taskCount / userCount : 0;
         }),
 
       // High priority tasks
-      this.prisma.task.count({
+      this.tenantPrisma.client.task.count({
         where: {
           ...taskWhereClause,
           priority: { in: ['HIGH', 'CRITICAL'] },
@@ -212,7 +213,7 @@ export class StatisticsService {
       }),
 
       // Tasks that might be overdue (pending for more than 7 days)
-      this.prisma.task.count({
+      this.tenantPrisma.client.task.count({
         where: {
           ...taskWhereClause,
           status: 'PENDING',
@@ -223,7 +224,7 @@ export class StatisticsService {
       }),
 
       // Tasks grouped by project (filtered by workspace)
-      this.prisma.task.groupBy({
+      this.tenantPrisma.client.task.groupBy({
         by: ['projectId'],
         where: taskWhereClause,
         _count: { id: true },
@@ -248,7 +249,7 @@ export class StatisticsService {
     const [activeUsers, recentSignups, usersByRole, topContributors] =
       await Promise.all([
         // Users who logged in within last 7 days
-        this.prisma.loginEvent.groupBy({
+        this.tenantPrisma.client.loginEvent.groupBy({
           by: ['userId'],
           where: {
             createdAt: {
@@ -259,7 +260,7 @@ export class StatisticsService {
         }),
 
         // New users in last 30 days
-        this.prisma.user.count({
+        this.tenantPrisma.client.user.count({
           where: {
             createdAt: {
               gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
@@ -269,7 +270,7 @@ export class StatisticsService {
         }),
 
         // Users by role using the new userRoles relation
-        this.prisma.role.findMany({
+        this.tenantPrisma.client.role.findMany({
           select: {
             id: true,
             name: true,
@@ -287,7 +288,7 @@ export class StatisticsService {
         }),
 
         // Top contributors (users with most tasks assigned) - fixed approach
-        this.prisma.user.findMany({
+        this.tenantPrisma.client.user.findMany({
           where: { isDeleted: false },
           select: {
             id: true,

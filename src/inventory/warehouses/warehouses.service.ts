@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   ConflictException,
@@ -12,12 +13,12 @@ import { Warehouse } from './entities/warehouse.entity';
 
 @Injectable()
 export class WarehousesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createWarehouseDto: CreateWarehouseDto): Promise<Warehouse> {
     // Note: Department functionality removed as departments are not in current schema
     // if (createWarehouseDto.departmentId) {
-    //   const department = await this.prisma.department.findUnique({
+    //   const department = await this.tenantPrisma.client.department.findUnique({
     //     where: { id: createWarehouseDto.departmentId },
     //   });
     //   if (!department) {
@@ -27,7 +28,7 @@ export class WarehousesService {
 
     // التحقق من وجود المخزن الأب إذا تم تحديده
     if (createWarehouseDto.parentId) {
-      const parentWarehouse = await this.prisma.warehouse.findUnique({
+      const parentWarehouse = await this.tenantPrisma.client.warehouse.findUnique({
         where: { id: createWarehouseDto.parentId },
       });
 
@@ -37,7 +38,7 @@ export class WarehousesService {
     }
 
     // التحقق من عدم وجود مخزن بنفس الاسم
-    const existingWarehouse = await this.prisma.warehouse.findFirst({
+    const existingWarehouse = await this.tenantPrisma.client.warehouse.findFirst({
       where: {
         name: createWarehouseDto.name,
         isDeleted: false,
@@ -48,7 +49,7 @@ export class WarehousesService {
       throw new ConflictException('اسم المخزن موجود مسبقاً');
     }
 
-    const warehouse = await this.prisma.warehouse.create({
+    const warehouse = await this.tenantPrisma.client.warehouse.create({
       data: createWarehouseDto,
       include: {
         parent: true,
@@ -107,7 +108,7 @@ export class WarehousesService {
     }
 
     const [warehouses, total] = await Promise.all([
-      this.prisma.warehouse.findMany({
+      this.tenantPrisma.client.warehouse.findMany({
         where,
         include: {
           parent: true,
@@ -122,7 +123,7 @@ export class WarehousesService {
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.warehouse.count({ where }),
+      this.tenantPrisma.client.warehouse.count({ where }),
     ]);
 
     return {
@@ -137,7 +138,7 @@ export class WarehousesService {
   }
 
   async findOne(id: number): Promise<Warehouse> {
-    const warehouse = await this.prisma.warehouse.findFirst({
+    const warehouse = await this.tenantPrisma.client.warehouse.findFirst({
       where: { id, isDeleted: false },
       include: {
         parent: true,
@@ -173,7 +174,7 @@ export class WarehousesService {
     updateWarehouseDto: UpdateWarehouseDto,
   ): Promise<Warehouse> {
     // التحقق من وجود المخزن
-    const existingWarehouse = await this.prisma.warehouse.findFirst({
+    const existingWarehouse = await this.tenantPrisma.client.warehouse.findFirst({
       where: { id, isDeleted: false },
     });
 
@@ -183,7 +184,7 @@ export class WarehousesService {
 
     // Note: Department functionality removed as departments are not in current schema
     // if (updateWarehouseDto.departmentId) {
-    //   const department = await this.prisma.department.findUnique({
+    //   const department = await this.tenantPrisma.client.department.findUnique({
     //     where: { id: updateWarehouseDto.departmentId },
     //   });
     //   if (!department) {
@@ -197,7 +198,7 @@ export class WarehousesService {
         throw new BadRequestException('لا يمكن أن يكون المخزن أباً لنفسه');
       }
 
-      const parentWarehouse = await this.prisma.warehouse.findUnique({
+      const parentWarehouse = await this.tenantPrisma.client.warehouse.findUnique({
         where: { id: updateWarehouseDto.parentId },
       });
 
@@ -214,7 +215,7 @@ export class WarehousesService {
       updateWarehouseDto.name &&
       updateWarehouseDto.name !== existingWarehouse.name
     ) {
-      const duplicateWarehouse = await this.prisma.warehouse.findFirst({
+      const duplicateWarehouse = await this.tenantPrisma.client.warehouse.findFirst({
         where: {
           name: updateWarehouseDto.name,
           isDeleted: false,
@@ -227,7 +228,7 @@ export class WarehousesService {
       }
     }
 
-    const warehouse = await this.prisma.warehouse.update({
+    const warehouse = await this.tenantPrisma.client.warehouse.update({
       where: { id },
       data: updateWarehouseDto,
       include: {
@@ -239,7 +240,7 @@ export class WarehousesService {
   }
 
   async remove(id: number): Promise<void> {
-    const warehouse = await this.prisma.warehouse.findFirst({
+    const warehouse = await this.tenantPrisma.client.warehouse.findFirst({
       where: { id, isDeleted: false },
     });
 
@@ -248,7 +249,7 @@ export class WarehousesService {
     }
 
     // التحقق من وجود مخازن فرعية
-    const childrenCount = await this.prisma.warehouse.count({
+    const childrenCount = await this.tenantPrisma.client.warehouse.count({
       where: { parentId: id, isDeleted: false },
     });
 
@@ -259,7 +260,7 @@ export class WarehousesService {
     }
 
     // التحقق من وجود مخزون
-    const stocksCount = await this.prisma.stock.count({
+    const stocksCount = await this.tenantPrisma.client.stock.count({
       where: { warehouseId: id },
     });
 
@@ -268,14 +269,14 @@ export class WarehousesService {
     }
 
     // Soft delete
-    await this.prisma.warehouse.update({
+    await this.tenantPrisma.client.warehouse.update({
       where: { id },
       data: { isDeleted: true },
     });
   }
 
   async getWarehouseHierarchy(id: number) {
-    const warehouse = await this.prisma.warehouse.findFirst({
+    const warehouse = await this.tenantPrisma.client.warehouse.findFirst({
       where: { id, isDeleted: false },
       include: {
         parent: true,
@@ -297,7 +298,7 @@ export class WarehousesService {
   }
 
   async getWarehouseStock(id: number) {
-    const warehouse = await this.prisma.warehouse.findFirst({
+    const warehouse = await this.tenantPrisma.client.warehouse.findFirst({
       where: { id, isDeleted: false },
     });
 
@@ -305,7 +306,7 @@ export class WarehousesService {
       throw new NotFoundException('المخزن غير موجود');
     }
 
-    const stocks = await this.prisma.stock.findMany({
+    const stocks = await this.tenantPrisma.client.stock.findMany({
       where: { warehouseId: id },
       include: {
         product: {
@@ -379,11 +380,11 @@ export class WarehousesService {
       mainWarehouses,
       subWarehouses,
     ] = await Promise.all([
-      this.prisma.warehouse.count({ where: { isDeleted: false } }),
-      this.prisma.warehouse.count({
+      this.tenantPrisma.client.warehouse.count({ where: { isDeleted: false } }),
+      this.tenantPrisma.client.warehouse.count({
         where: { isDeleted: false, isActive: true },
       }),
-      this.prisma.warehouse.count({
+      this.tenantPrisma.client.warehouse.count({
         where: {
           isDeleted: false,
           stocks: {
@@ -391,10 +392,10 @@ export class WarehousesService {
           },
         },
       }),
-      this.prisma.warehouse.count({
+      this.tenantPrisma.client.warehouse.count({
         where: { isDeleted: false, parentId: null },
       }),
-      this.prisma.warehouse.count({
+      this.tenantPrisma.client.warehouse.count({
         where: { isDeleted: false, parentId: { not: null } },
       }),
     ]);
@@ -428,7 +429,7 @@ export class WarehousesService {
 
       visited.add(currentParentId);
 
-      const parent = await this.prisma.warehouse.findUnique({
+      const parent = await this.tenantPrisma.client.warehouse.findUnique({
         where: { id: currentParentId },
         select: { parentId: true },
       });
@@ -438,7 +439,7 @@ export class WarehousesService {
   }
 
   private async getChildrenRecursive(parentId: number): Promise<Warehouse[]> {
-    const children = await this.prisma.warehouse.findMany({
+    const children = await this.tenantPrisma.client.warehouse.findMany({
       where: { parentId, isDeleted: false },
       include: {
         _count: {
@@ -488,7 +489,7 @@ export class WarehousesService {
 
   async getWarehouseTree() {
     // Get all main warehouses (no parent) and build tree structure
-    const mainWarehouses = await this.prisma.warehouse.findMany({
+    const mainWarehouses = await this.tenantPrisma.client.warehouse.findMany({
       where: {
         parentId: null,
         isDeleted: false,
@@ -517,7 +518,7 @@ export class WarehousesService {
   }
 
   async getWarehouseLocations() {
-    const warehouses = await this.prisma.warehouse.findMany({
+    const warehouses = await this.tenantPrisma.client.warehouse.findMany({
       where: {
         isDeleted: false,
         location: { not: null },
@@ -566,7 +567,7 @@ export class WarehousesService {
   }
 
   private async buildTreeNode(warehouseId: number): Promise<any> {
-    const warehouse = await this.prisma.warehouse.findUnique({
+    const warehouse = await this.tenantPrisma.client.warehouse.findUnique({
       where: { id: warehouseId },
       include: {
         children: {

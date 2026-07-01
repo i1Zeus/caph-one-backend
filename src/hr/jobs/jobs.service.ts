@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -9,12 +10,12 @@ import { CreateJobDto, UpdateJobDto } from './dto';
 
 @Injectable()
 export class JobsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createJobDto: CreateJobDto): Promise<Job> {
     try {
       // Check if job name already exists
-      const existingJob = await this.prisma.job.findFirst({
+      const existingJob = await this.tenantPrisma.client.job.findFirst({
         where: {
           name: createJobDto.name,
           isDeleted: false,
@@ -25,7 +26,7 @@ export class JobsService {
         throw new BadRequestException('Job with this name already exists');
       }
 
-      return await this.prisma.job.create({
+      return await this.tenantPrisma.client.job.create({
         data: createJobDto,
         include: {
           employees: {
@@ -61,7 +62,7 @@ export class JobsService {
     };
 
     const [jobs, total] = await Promise.all([
-      this.prisma.job.findMany({
+      this.tenantPrisma.client.job.findMany({
         where,
         skip,
         take: limit,
@@ -85,7 +86,7 @@ export class JobsService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.job.count({ where }),
+      this.tenantPrisma.client.job.count({ where }),
     ]);
 
     return {
@@ -98,7 +99,7 @@ export class JobsService {
   }
 
   async findOne(id: string): Promise<Job> {
-    const job = await this.prisma.job.findUnique({
+    const job = await this.tenantPrisma.client.job.findUnique({
       where: { id, isDeleted: false },
       include: {
         employees: {
@@ -134,7 +135,7 @@ export class JobsService {
 
     // Check if job name already exists (excluding current job)
     if (updateJobDto.name && updateJobDto.name !== job.name) {
-      const existingJob = await this.prisma.job.findFirst({
+      const existingJob = await this.tenantPrisma.client.job.findFirst({
         where: {
           name: updateJobDto.name,
           isDeleted: false,
@@ -148,7 +149,7 @@ export class JobsService {
     }
 
     try {
-      return await this.prisma.job.update({
+      return await this.tenantPrisma.client.job.update({
         where: { id },
         data: updateJobDto,
         include: {
@@ -172,7 +173,7 @@ export class JobsService {
     // const job = await this.findOne(id);
 
     // Check if job has active employees
-    const activeEmployeesCount = await this.prisma.employee.count({
+    const activeEmployeesCount = await this.tenantPrisma.client.employee.count({
       where: {
         jobId: id,
         isDeleted: false,
@@ -186,7 +187,7 @@ export class JobsService {
       );
     }
 
-    return await this.prisma.job.update({
+    return await this.tenantPrisma.client.job.update({
       where: { id },
       data: { isDeleted: true },
       include: {
@@ -205,8 +206,8 @@ export class JobsService {
 
   async getJobStats() {
     const [totalJobs, jobsWithEmployees] = await Promise.all([
-      this.prisma.job.count({ where: { isDeleted: false } }),
-      this.prisma.job.count({
+      this.tenantPrisma.client.job.count({ where: { isDeleted: false } }),
+      this.tenantPrisma.client.job.count({
         where: {
           isDeleted: false,
           employees: {

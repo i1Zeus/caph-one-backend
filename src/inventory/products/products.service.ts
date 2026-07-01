@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   ConflictException,
   Injectable,
@@ -15,7 +16,7 @@ import { Product } from './entities/product.entity';
 @Injectable()
 export class ProductsService {
   constructor(
-    private prisma: PrismaService,
+    private prisma: PrismaService, private tenantPrisma: TenantPrismaService,
     private filesService: FilesService,
   ) {}
 
@@ -25,7 +26,7 @@ export class ProductsService {
     uploadedById?: string,
   ): Promise<Product> {
     // Check if barcode already exists
-    const existingProduct = await this.prisma.product.findFirst({
+    const existingProduct = await this.tenantPrisma.client.product.findFirst({
       where: {
         barcode: createProductDto.barcode,
         isDeleted: false,
@@ -38,7 +39,7 @@ export class ProductsService {
 
     // Check if sales unit exists
     if (createProductDto.salesUnitId) {
-      const salesUnit = await this.prisma.unit.findFirst({
+      const salesUnit = await this.tenantPrisma.client.unit.findFirst({
         where: {
           id: createProductDto.salesUnitId,
           isDeleted: false,
@@ -53,7 +54,7 @@ export class ProductsService {
 
     // Check if purchase unit exists
     if (createProductDto.purchaseUnitId) {
-      const purchaseUnit = await this.prisma.unit.findFirst({
+      const purchaseUnit = await this.tenantPrisma.client.unit.findFirst({
         where: {
           id: createProductDto.purchaseUnitId,
           isDeleted: false,
@@ -109,7 +110,7 @@ export class ProductsService {
     // Validate categories if provided
     const categoryIds = createProductDto.categoryIds;
     if (categoryIds && categoryIds.length > 0) {
-      const categories = await this.prisma.productCategory.findMany({
+      const categories = await this.tenantPrisma.client.productCategory.findMany({
         where: {
           id: { in: categoryIds },
           isDeleted: false,
@@ -124,7 +125,7 @@ export class ProductsService {
     const productData = { ...createProductDto };
     delete productData.categoryIds;
 
-    const product = await this.prisma.product.create({
+    const product = await this.tenantPrisma.client.product.create({
       data: {
         ...productData,
         purchasePrice: createProductDto.purchasePrice
@@ -227,7 +228,7 @@ export class ProductsService {
     }
 
     const [products, total] = await Promise.all([
-      this.prisma.product.findMany({
+      this.tenantPrisma.client.product.findMany({
         where,
         include: {
           salesUnit: {
@@ -250,7 +251,7 @@ export class ProductsService {
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.product.count({ where }),
+      this.tenantPrisma.client.product.count({ where }),
     ]);
 
     const transformedProducts = products.map(
@@ -292,7 +293,7 @@ export class ProductsService {
   }
 
   async findOne(id: number): Promise<Product> {
-    const product = await this.prisma.product.findFirst({
+    const product = await this.tenantPrisma.client.product.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -351,7 +352,7 @@ export class ProductsService {
     imageFile?: Express.Multer.File,
     uploadedById?: string,
   ): Promise<Product> {
-    const existingProduct = await this.prisma.product.findFirst({
+    const existingProduct = await this.tenantPrisma.client.product.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -364,7 +365,7 @@ export class ProductsService {
 
     // Check if barcode already exists (excluding current product)
     if (updateProductDto.barcode) {
-      const duplicateProduct = await this.prisma.product.findFirst({
+      const duplicateProduct = await this.tenantPrisma.client.product.findFirst({
         where: {
           barcode: updateProductDto.barcode,
           id: { not: id },
@@ -379,7 +380,7 @@ export class ProductsService {
 
     // Check if sales unit exists
     if (updateProductDto.salesUnitId) {
-      const salesUnit = await this.prisma.unit.findFirst({
+      const salesUnit = await this.tenantPrisma.client.unit.findFirst({
         where: {
           id: updateProductDto.salesUnitId,
           isDeleted: false,
@@ -394,7 +395,7 @@ export class ProductsService {
 
     // Check if purchase unit exists
     if (updateProductDto.purchaseUnitId) {
-      const purchaseUnit = await this.prisma.unit.findFirst({
+      const purchaseUnit = await this.tenantPrisma.client.unit.findFirst({
         where: {
           id: updateProductDto.purchaseUnitId,
           isDeleted: false,
@@ -410,7 +411,7 @@ export class ProductsService {
     // Validate categories if provided
     const categoryIds = updateProductDto.categoryIds;
     if (categoryIds && categoryIds.length > 0) {
-      const categories = await this.prisma.productCategory.findMany({
+      const categories = await this.tenantPrisma.client.productCategory.findMany({
         where: {
           id: { in: categoryIds },
           isDeleted: false,
@@ -470,7 +471,7 @@ export class ProductsService {
     const categoryUpdateData: any = {};
     if (categoryIds !== undefined) {
       // Delete existing category relations
-      await this.prisma.productCategoryRelation.deleteMany({
+      await this.tenantPrisma.client.productCategoryRelation.deleteMany({
         where: { productId: id },
       });
 
@@ -484,7 +485,7 @@ export class ProductsService {
       }
     }
 
-    const updatedProduct = await this.prisma.product.update({
+    const updatedProduct = await this.tenantPrisma.client.product.update({
       where: { id },
       data: {
         ...productData,
@@ -547,7 +548,7 @@ export class ProductsService {
   }
 
   async remove(id: number): Promise<void> {
-    const product = await this.prisma.product.findFirst({
+    const product = await this.tenantPrisma.client.product.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -559,7 +560,7 @@ export class ProductsService {
     }
 
     // Check if product is used in stock
-    const stockCount = await this.prisma.stock.count({
+    const stockCount = await this.tenantPrisma.client.stock.count({
       where: {
         productId: id,
       },
@@ -570,7 +571,7 @@ export class ProductsService {
     }
 
     // Check if product is used in transactions
-    const transactionCount = await this.prisma.warehouseTransaction.count({
+    const transactionCount = await this.tenantPrisma.client.warehouseTransaction.count({
       where: {
         items: {
           some: {
@@ -584,7 +585,7 @@ export class ProductsService {
       throw new ConflictException('لا يمكن حذف المنتج لأنه مستخدم في الحركات');
     }
 
-    await this.prisma.product.update({
+    await this.tenantPrisma.client.product.update({
       where: { id },
       data: { isDeleted: true },
     });
@@ -599,18 +600,18 @@ export class ProductsService {
       physicalProducts,
       serviceProducts,
     ] = await Promise.all([
-      this.prisma.product.count({ where: { isDeleted: false } }),
-      this.prisma.product.count({
+      this.tenantPrisma.client.product.count({ where: { isDeleted: false } }),
+      this.tenantPrisma.client.product.count({
         where: { isActive: true, isDeleted: false },
       }),
-      this.prisma.product.count({
+      this.tenantPrisma.client.product.count({
         where: { isActive: false, isDeleted: false },
       }),
-      this.prisma.product.count({ where: { isDeleted: true } }),
-      this.prisma.product.count({
+      this.tenantPrisma.client.product.count({ where: { isDeleted: true } }),
+      this.tenantPrisma.client.product.count({
         where: { type: 'PRODUCT', isDeleted: false },
       }),
-      this.prisma.product.count({
+      this.tenantPrisma.client.product.count({
         where: { type: 'SERVICE', isDeleted: false },
       }),
     ]);
@@ -626,7 +627,7 @@ export class ProductsService {
   }
 
   async findByBarcode(barcode: string): Promise<Product> {
-    const product = await this.prisma.product.findFirst({
+    const product = await this.tenantPrisma.client.product.findFirst({
       where: {
         barcode,
         isDeleted: false,
@@ -676,7 +677,7 @@ export class ProductsService {
   async getLowStockProducts(limit: number = 10) {
     // Get products with stock levels below their minimum stock alert
     // Only physical products (not services) can have stock
-    const products = await this.prisma.product.findMany({
+    const products = await this.tenantPrisma.client.product.findMany({
       where: {
         isDeleted: false,
         isActive: true,

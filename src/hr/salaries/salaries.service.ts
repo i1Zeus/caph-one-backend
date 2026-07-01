@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -16,12 +17,12 @@ import {
 
 @Injectable()
 export class SalariesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createSalaryDto: CreateSalaryDto): Promise<Salary> {
     try {
       // Check if salary already exists for this employee in this month/year
-      const existingSalary = await this.prisma.salary.findFirst({
+      const existingSalary = await this.tenantPrisma.client.salary.findFirst({
         where: {
           employeeId: createSalaryDto.employeeId,
           currentYear: createSalaryDto.currentYear,
@@ -36,7 +37,7 @@ export class SalariesService {
         );
       }
 
-      return await this.prisma.salary.create({
+      return await this.tenantPrisma.client.salary.create({
         data: {
           ...createSalaryDto,
           startDate: createSalaryDto.startDate
@@ -71,7 +72,7 @@ export class SalariesService {
     } = generateDto;
 
     // First delete existing salary records for this month/year/workspace (only unpaid ones)
-    await this.prisma.salary.deleteMany({
+    await this.tenantPrisma.client.salary.deleteMany({
       where: {
         currentYear: year,
         currentMonth: month,
@@ -105,7 +106,7 @@ export class SalariesService {
     } = generateDto;
 
     // Get all eligible employees in the workspace (excluding only terminated and suspended)
-    const employees = await this.prisma.employee.findMany({
+    const employees = await this.tenantPrisma.client.employee.findMany({
       where: {
         employmentStatus: {
           notIn: ['TERMINATED', 'SUSPENDED'], // Only exclude terminated and suspended employees
@@ -153,7 +154,7 @@ export class SalariesService {
     for (const employee of employees) {
       try {
         // Check if salary already exists for this month
-        const existingSalary = await this.prisma.salary.findFirst({
+        const existingSalary = await this.tenantPrisma.client.salary.findFirst({
           where: {
             employeeId: employee.id,
             currentYear: year,
@@ -180,7 +181,7 @@ export class SalariesService {
         );
 
         // Create salary record with detailed statistics
-        await this.prisma.salary.create({
+        await this.tenantPrisma.client.salary.create({
           data: {
             employeeId: employee.id,
             amount: encrypt(calculation.finalAmount.toString(), encryptionKey),
@@ -501,7 +502,7 @@ export class SalariesService {
     };
 
     const [salaries, total] = await Promise.all([
-      this.prisma.salary.findMany({
+      this.tenantPrisma.client.salary.findMany({
         where,
         skip,
         take: limit,
@@ -542,7 +543,7 @@ export class SalariesService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.salary.count({ where }),
+      this.tenantPrisma.client.salary.count({ where }),
     ]);
 
     // Calculate detailed statistics for each salary record
@@ -860,7 +861,7 @@ export class SalariesService {
   }
 
   async findOne(id: string, encryptionKey?: string): Promise<Salary> {
-    const salary = await this.prisma.salary.findUnique({
+    const salary = await this.tenantPrisma.client.salary.findUnique({
       where: { id, isDeleted: false },
       include: {
         employee: {
@@ -907,7 +908,7 @@ export class SalariesService {
     await this.findOne(id, undefined);
 
     try {
-      return await this.prisma.salary.update({
+      return await this.tenantPrisma.client.salary.update({
         where: { id },
         data: {
           ...updateSalaryDto,
@@ -931,7 +932,7 @@ export class SalariesService {
   async markAsPaid(id: string): Promise<Salary> {
     // const salary = await this.findOne(id, undefined);
 
-    return await this.prisma.salary.update({
+    return await this.tenantPrisma.client.salary.update({
       where: { id },
       data: { isSalaryGet: true },
       include: {
@@ -944,7 +945,7 @@ export class SalariesService {
   async remove(id: string): Promise<Salary> {
     await this.findOne(id, undefined);
 
-    return await this.prisma.salary.update({
+    return await this.tenantPrisma.client.salary.update({
       where: { id },
       data: { isDeleted: true },
       include: {
@@ -975,17 +976,17 @@ export class SalariesService {
 
     const [totalPaid, totalUnpaid, currentMonthTotal, currentYearTotal] =
       await Promise.all([
-        this.prisma.salary.count({
+        this.tenantPrisma.client.salary.count({
           where: { ...where, isSalaryGet: true },
         }),
-        this.prisma.salary.count({
+        this.tenantPrisma.client.salary.count({
           where: { ...where, isSalaryGet: false },
         }),
-        this.prisma.salary.findMany({
+        this.tenantPrisma.client.salary.findMany({
           where: { ...where, currentYear, currentMonth },
           select: { amount: true },
         }),
-        this.prisma.salary.findMany({
+        this.tenantPrisma.client.salary.findMany({
           where: { ...where, currentYear },
           select: { amount: true },
         }),
@@ -1041,7 +1042,7 @@ export class SalariesService {
     console.log(`Setting startWorkingTime to: ${startWorkingTime}`);
     console.log(`Setting endWorkingTime to: ${endWorkingTime}`);
 
-    const updatedEmployee = await this.prisma.employee.update({
+    const updatedEmployee = await this.tenantPrisma.client.employee.update({
       where: { id: employeeId },
       data: {
         startWorkingTime,
@@ -1060,7 +1061,7 @@ export class SalariesService {
     console.log(`Date: ${attendanceDate}`);
 
     // Get employee with their working times
-    const employee = await this.prisma.employee.findUnique({
+    const employee = await this.tenantPrisma.client.employee.findUnique({
       where: { id: employeeId },
       include: {
         attendances: {

@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   ConflictException,
@@ -13,11 +14,11 @@ import { Unit } from './entities/unit.entity';
 
 @Injectable()
 export class UnitsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createUnitDto: CreateUnitDto): Promise<Unit> {
     // التحقق من وجود فئة الوحدة
-    const category = await this.prisma.unitCategory.findFirst({
+    const category = await this.tenantPrisma.client.unitCategory.findFirst({
       where: { id: createUnitDto.categoryId, isDeleted: false },
     });
 
@@ -26,7 +27,7 @@ export class UnitsService {
     }
 
     // التحقق من وجود الوحدة في نفس الفئة
-    const existingUnit = await this.prisma.unit.findFirst({
+    const existingUnit = await this.tenantPrisma.client.unit.findFirst({
       where: {
         name: createUnitDto.name,
         categoryId: createUnitDto.categoryId,
@@ -44,7 +45,7 @@ export class UnitsService {
       createUnitDto.ratio || 1.0,
     );
 
-    const unit = await this.prisma.unit.create({
+    const unit = await this.tenantPrisma.client.unit.create({
       data: {
         ...createUnitDto,
         type: createUnitDto.type || UnitType.MAIN,
@@ -67,7 +68,7 @@ export class UnitsService {
     const { categoryId, units } = createBulkUnitsDto;
 
     // التحقق من وجود فئة الوحدة
-    const category = await this.prisma.unitCategory.findFirst({
+    const category = await this.tenantPrisma.client.unitCategory.findFirst({
       where: { id: categoryId, isDeleted: false },
     });
 
@@ -82,7 +83,7 @@ export class UnitsService {
     for (const unitData of units) {
       try {
         // التحقق من وجود الوحدة في نفس الفئة
-        const existingUnit = await this.prisma.unit.findFirst({
+        const existingUnit = await this.tenantPrisma.client.unit.findFirst({
           where: {
             name: unitData.name,
             categoryId: categoryId,
@@ -105,7 +106,7 @@ export class UnitsService {
         );
 
         // إنشاء الوحدة
-        const createdUnit = await this.prisma.unit.create({
+        const createdUnit = await this.tenantPrisma.client.unit.create({
           data: {
             ...unitData,
             categoryId,
@@ -163,7 +164,7 @@ export class UnitsService {
     }
 
     const [units, total] = await Promise.all([
-      this.prisma.unit.findMany({
+      this.tenantPrisma.client.unit.findMany({
         where,
         include: {
           category: true,
@@ -172,7 +173,7 @@ export class UnitsService {
         take: limit,
         orderBy: [{ categoryId: 'asc' }, { type: 'asc' }, { ratio: 'asc' }],
       }),
-      this.prisma.unit.count({ where }),
+      this.tenantPrisma.client.unit.count({ where }),
     ]);
 
     return {
@@ -193,7 +194,7 @@ export class UnitsService {
   }
 
   async findOne(id: number): Promise<Unit> {
-    const unit = await this.prisma.unit.findFirst({
+    const unit = await this.tenantPrisma.client.unit.findFirst({
       where: { id, isDeleted: false },
       include: {
         category: true,
@@ -212,7 +213,7 @@ export class UnitsService {
 
   async update(id: number, updateUnitDto: UpdateUnitDto): Promise<Unit> {
     // التحقق من وجود الوحدة
-    const existingUnit = await this.prisma.unit.findFirst({
+    const existingUnit = await this.tenantPrisma.client.unit.findFirst({
       where: { id, isDeleted: false },
     });
 
@@ -225,7 +226,7 @@ export class UnitsService {
       updateUnitDto.categoryId &&
       updateUnitDto.categoryId !== existingUnit.categoryId
     ) {
-      const category = await this.prisma.unitCategory.findFirst({
+      const category = await this.tenantPrisma.client.unitCategory.findFirst({
         where: { id: updateUnitDto.categoryId, isDeleted: false },
       });
 
@@ -237,7 +238,7 @@ export class UnitsService {
     // التحقق من الاسم إذا تم تغييره في نفس الفئة
     if (updateUnitDto.name && updateUnitDto.name !== existingUnit.name) {
       const categoryId = updateUnitDto.categoryId || existingUnit.categoryId;
-      const duplicateUnit = await this.prisma.unit.findFirst({
+      const duplicateUnit = await this.tenantPrisma.client.unit.findFirst({
         where: {
           name: updateUnitDto.name,
           categoryId: categoryId,
@@ -258,7 +259,7 @@ export class UnitsService {
       this.validateUnitRatio(newType, newRatio);
     }
 
-    const unit = await this.prisma.unit.update({
+    const unit = await this.tenantPrisma.client.unit.update({
       where: { id },
       data: updateUnitDto,
       include: {
@@ -273,7 +274,7 @@ export class UnitsService {
   }
 
   async remove(id: number): Promise<void> {
-    const unit = await this.prisma.unit.findFirst({
+    const unit = await this.tenantPrisma.client.unit.findFirst({
       where: { id, isDeleted: false },
     });
 
@@ -282,7 +283,7 @@ export class UnitsService {
     }
 
     // التحقق من وجود منتجات تستخدم هذه الوحدة
-    const productsCount = await this.prisma.product.count({
+    const productsCount = await this.tenantPrisma.client.product.count({
       where: {
         OR: [{ salesUnitId: id }, { purchaseUnitId: id }],
         isDeleted: false,
@@ -294,14 +295,14 @@ export class UnitsService {
     }
 
     // Soft delete
-    await this.prisma.unit.update({
+    await this.tenantPrisma.client.unit.update({
       where: { id },
       data: { isDeleted: true },
     });
   }
 
   async getUnitProducts(id: number) {
-    const unit = await this.prisma.unit.findFirst({
+    const unit = await this.tenantPrisma.client.unit.findFirst({
       where: { id, isDeleted: false },
     });
 
@@ -309,7 +310,7 @@ export class UnitsService {
       throw new NotFoundException('الوحدة غير موجودة');
     }
 
-    const products = await this.prisma.product.findMany({
+    const products = await this.tenantPrisma.client.product.findMany({
       where: {
         OR: [{ salesUnitId: id }, { purchaseUnitId: id }],
         isDeleted: false,
@@ -338,9 +339,9 @@ export class UnitsService {
 
   async getUnitsStats() {
     const [totalUnits, activeUnits, unitsWithProducts] = await Promise.all([
-      this.prisma.unit.count({ where: { isDeleted: false } }),
-      this.prisma.unit.count({ where: { isDeleted: false, isActive: true } }),
-      this.prisma.unit.count({
+      this.tenantPrisma.client.unit.count({ where: { isDeleted: false } }),
+      this.tenantPrisma.client.unit.count({ where: { isDeleted: false, isActive: true } }),
+      this.tenantPrisma.client.unit.count({
         where: {
           isDeleted: false,
           OR: [
@@ -469,7 +470,7 @@ export class UnitsService {
   }
 
   async getUnitsByCategory(categoryId: number) {
-    const units = await this.prisma.unit.findMany({
+    const units = await this.tenantPrisma.client.unit.findMany({
       where: {
         categoryId,
         isDeleted: false,

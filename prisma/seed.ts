@@ -136,6 +136,22 @@ async function main() {
     `✅ Assigned ALL ${permissions.length} permissions to Super Admin role`,
   );
 
+  // Create default organization
+  console.log('🏢 Creating default organization...');
+  const defaultOrg = await prisma.organization.upsert({
+    where: { slug: 'default' },
+    update: {
+      name: 'Default Organization',
+      maxWorkspaces: 5,
+    },
+    create: {
+      name: 'Default Organization',
+      slug: 'default',
+      maxWorkspaces: 5,
+    },
+  });
+  console.log(`✅ Created/Updated organization: ${defaultOrg.name}`);
+
   // Create or find user husseinnajah.it@gmail.com
   console.log('👤 Creating/Finding user husseinnajah.it@gmail.com...');
 
@@ -147,6 +163,7 @@ async function main() {
     update: {
       password: hashedPassword, // Update password if user exists
       isDeleted: false, // Restore user if it was soft-deleted
+      isSuperAdmin: true,
     },
     create: {
       name: 'Super Admin',
@@ -154,6 +171,7 @@ async function main() {
       password: hashedPassword,
       phone: '+9647730281556', // Required field, using placeholder
       isDeleted: false,
+      isSuperAdmin: true,
     },
   });
 
@@ -169,12 +187,14 @@ async function main() {
       name: 'iZeus ERP',
       description: 'Default workspace for iZeus ERP system',
       isDeleted: false, // Restore workspace if it was soft-deleted
+      organizationId: defaultOrg.id,
     },
     create: {
       name: 'iZeus ERP',
       description: 'Default workspace for iZeus ERP system',
       slug: 'iZeus-erp',
       isDeleted: false,
+      organizationId: defaultOrg.id,
     },
   });
   console.log(

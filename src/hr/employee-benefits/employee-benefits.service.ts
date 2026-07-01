@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -13,12 +14,12 @@ import {
 
 @Injectable()
 export class EmployeeBenefitsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createDto: CreateEmployeeBenefitDto): Promise<EmployeeBenefit> {
     try {
       // Verify employee exists
-      const employee = await this.prisma.employee.findUnique({
+      const employee = await this.tenantPrisma.client.employee.findUnique({
         where: { id: createDto.employeeId, isDeleted: false },
       });
 
@@ -26,7 +27,7 @@ export class EmployeeBenefitsService {
         throw new NotFoundException('Employee not found');
       }
 
-      const benefit = await this.prisma.employeeBenefit.create({
+      const benefit = await this.tenantPrisma.client.employeeBenefit.create({
         data: {
           employeeId: createDto.employeeId,
           type: createDto.type,
@@ -115,7 +116,7 @@ export class EmployeeBenefitsService {
     orderBy[sortBy] = sortOrder;
 
     const [benefits, total] = await Promise.all([
-      this.prisma.employeeBenefit.findMany({
+      this.tenantPrisma.client.employeeBenefit.findMany({
         where,
         skip,
         take: limit,
@@ -136,7 +137,7 @@ export class EmployeeBenefitsService {
         },
         orderBy,
       }),
-      this.prisma.employeeBenefit.count({ where }),
+      this.tenantPrisma.client.employeeBenefit.count({ where }),
     ]);
 
     return {
@@ -153,7 +154,7 @@ export class EmployeeBenefitsService {
   }
 
   async findOne(id: string): Promise<EmployeeBenefit> {
-    const benefit = await this.prisma.employeeBenefit.findUnique({
+    const benefit = await this.tenantPrisma.client.employeeBenefit.findUnique({
       where: { id, isDeleted: false },
       include: {
         employee: {
@@ -175,7 +176,7 @@ export class EmployeeBenefitsService {
   }
 
   async findByEmployee(employeeId: string) {
-    const employee = await this.prisma.employee.findUnique({
+    const employee = await this.tenantPrisma.client.employee.findUnique({
       where: { id: employeeId, isDeleted: false },
     });
 
@@ -183,7 +184,7 @@ export class EmployeeBenefitsService {
       throw new NotFoundException('Employee not found');
     }
 
-    return this.prisma.employeeBenefit.findMany({
+    return this.tenantPrisma.client.employeeBenefit.findMany({
       where: {
         employeeId,
         isDeleted: false,
@@ -200,7 +201,7 @@ export class EmployeeBenefitsService {
   ): Promise<EmployeeBenefit> {
     // const benefit = await this.findOne(id);
 
-    const updatedBenefit = await this.prisma.employeeBenefit.update({
+    const updatedBenefit = await this.tenantPrisma.client.employeeBenefit.update({
       where: { id },
       data: {
         type: updateDto.type,
@@ -237,7 +238,7 @@ export class EmployeeBenefitsService {
   async remove(id: string): Promise<EmployeeBenefit> {
     // const benefit = await this.findOne(id);
 
-    return await this.prisma.employeeBenefit.update({
+    return await this.tenantPrisma.client.employeeBenefit.update({
       where: { id },
       data: { isDeleted: true },
       include: {
@@ -249,7 +250,7 @@ export class EmployeeBenefitsService {
   async deactivate(id: string): Promise<EmployeeBenefit> {
     // const benefit = await this.findOne(id);
 
-    return await this.prisma.employeeBenefit.update({
+    return await this.tenantPrisma.client.employeeBenefit.update({
       where: { id },
       data: { isActive: false, endDate: new Date() },
       include: {
@@ -276,23 +277,23 @@ export class EmployeeBenefitsService {
       totalAllowances,
       expiringInWeek,
     ] = await Promise.all([
-      this.prisma.employeeBenefit.count({ where }),
-      this.prisma.employeeBenefit.count({
+      this.tenantPrisma.client.employeeBenefit.count({ where }),
+      this.tenantPrisma.client.employeeBenefit.count({
         where: { ...where, isActive: true },
       }),
-      this.prisma.employeeBenefit.count({
+      this.tenantPrisma.client.employeeBenefit.count({
         where: { ...where, isActive: false },
       }),
-      this.prisma.employeeBenefit.groupBy({
+      this.tenantPrisma.client.employeeBenefit.groupBy({
         by: ['type'],
         where,
         _count: { type: true },
       }),
-      this.prisma.employeeBenefit.aggregate({
+      this.tenantPrisma.client.employeeBenefit.aggregate({
         where: { ...where, premium: { not: null } },
         _sum: { premium: true },
       }),
-      this.prisma.employeeBenefit.aggregate({
+      this.tenantPrisma.client.employeeBenefit.aggregate({
         where: {
           ...where,
           type: {
@@ -307,7 +308,7 @@ export class EmployeeBenefitsService {
         },
         _sum: { amount: true },
       }),
-      this.prisma.employeeBenefit.count({
+      this.tenantPrisma.client.employeeBenefit.count({
         where: {
           ...where,
           isActive: true,
@@ -338,7 +339,7 @@ export class EmployeeBenefitsService {
       Date.now() + daysBeforeExpiry * 24 * 60 * 60 * 1000,
     );
 
-    return this.prisma.employeeBenefit.findMany({
+    return this.tenantPrisma.client.employeeBenefit.findMany({
       where: {
         isDeleted: false,
         isActive: true,

@@ -1,6 +1,7 @@
 import { LeadStatus, Lead as PrismaLead } from '@prisma/client';
 
 export class Lead implements PrismaLead {
+  organizationId: string;
   id: string;
   name: string;
   order: number | null;

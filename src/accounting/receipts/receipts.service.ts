@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -11,7 +12,7 @@ import { CreateReceiptDto, FilterReceiptsDto, UpdateReceiptDto } from './dto';
 export class ReceiptsService {
   // private readonly logger = new Logger(ReceiptsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async createReceipt(createReceiptDto: CreateReceiptDto) {
     const {
@@ -26,7 +27,7 @@ export class ReceiptsService {
       // reference,
     } = createReceiptDto;
 
-    return await this.prisma.$transaction(async (tx) => {
+    return await this.tenantPrisma.client.$transaction(async (tx) => {
       // التحقق من وجود العميل
       const client = await tx.client.findUnique({
         where: { id: clientId },
@@ -281,7 +282,7 @@ export class ReceiptsService {
     const skip = (page - 1) * limit;
 
     const [receipts] = await Promise.all([
-      this.prisma.transaction.findMany({
+      this.tenantPrisma.client.transaction.findMany({
         where,
         include: {
           client: {
@@ -302,14 +303,14 @@ export class ReceiptsService {
         skip,
         take: limit,
       }),
-      this.prisma.transaction.count({ where }),
+      this.tenantPrisma.client.transaction.count({ where }),
     ]);
 
     return receipts;
   }
 
   async findOne(id: number) {
-    const receipt = await this.prisma.transaction.findUnique({
+    const receipt = await this.tenantPrisma.client.transaction.findUnique({
       where: { id, isDeleted: false },
       include: {
         client: {
@@ -358,7 +359,7 @@ export class ReceiptsService {
       payments,
     } = updateReceiptDto;
 
-    return await this.prisma.$transaction(async (tx) => {
+    return await this.tenantPrisma.client.$transaction(async (tx) => {
       // Get existing transaction with all related data
       const existingTransaction = await tx.transaction.findUnique({
         where: { id, isDeleted: false },
@@ -626,7 +627,7 @@ export class ReceiptsService {
   }
 
   async remove(id: number) {
-    return await this.prisma.$transaction(async (tx) => {
+    return await this.tenantPrisma.client.$transaction(async (tx) => {
       // العثور على المعاملة
       const transaction = await tx.transaction.findUnique({
         where: { id },
@@ -729,7 +730,7 @@ export class ReceiptsService {
 
     // جلب المعاملات وتحويلها إلى تنسيق Receipt
     const [transactions, total] = await Promise.all([
-      this.prisma.transaction.findMany({
+      this.tenantPrisma.client.transaction.findMany({
         where: whereClause,
         include: {
           entries: {
@@ -747,7 +748,7 @@ export class ReceiptsService {
         skip,
         take: limit,
       }),
-      this.prisma.transaction.count({
+      this.tenantPrisma.client.transaction.count({
         where: whereClause,
       }),
     ]);

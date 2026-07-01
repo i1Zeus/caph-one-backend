@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   Injectable,
   BadRequestException,
@@ -23,7 +24,7 @@ export class PurchaseReturnInvoicesService {
   private readonly logger = new Logger(PurchaseReturnInvoicesService.name);
 
   constructor(
-    private prisma: PrismaService,
+    private prisma: PrismaService, private tenantPrisma: TenantPrismaService,
     private invoiceConfigsService: InvoiceConfigsService,
     private unitsService: UnitsService,
     private warehouseTransactionsService: WarehouseTransactionsService,
@@ -36,7 +37,7 @@ export class PurchaseReturnInvoicesService {
     const year = new Date().getFullYear();
     const prefix = `RET-PUR-${year}-`;
 
-    const lastReturn = await this.prisma.purchaseReturnInvoice.findFirst({
+    const lastReturn = await this.tenantPrisma.client.purchaseReturnInvoice.findFirst({
       where: {
         returnInvoiceNumber: {
           startsWith: prefix,
@@ -62,7 +63,7 @@ export class PurchaseReturnInvoicesService {
    * Get returnable items from original invoice
    */
   async getReturnableItems(purchaseInvoiceId: number) {
-    const invoice = await this.prisma.purchaseInvoice.findUnique({
+    const invoice = await this.tenantPrisma.client.purchaseInvoice.findUnique({
       where: { id: purchaseInvoiceId, isDeleted: false },
       include: {
         items: {
@@ -148,7 +149,7 @@ export class PurchaseReturnInvoicesService {
    * Recalculate original invoice amounts based on returns
    */
   async recalculateOriginalInvoice(purchaseInvoiceId: number) {
-    const invoice = await this.prisma.purchaseInvoice.findUnique({
+    const invoice = await this.tenantPrisma.client.purchaseInvoice.findUnique({
       where: { id: purchaseInvoiceId, isDeleted: false },
       include: {
         returnInvoicesNew: {
@@ -208,7 +209,7 @@ export class PurchaseReturnInvoicesService {
       createDto;
 
     // Verify original invoice exists
-    const originalInvoice = await this.prisma.purchaseInvoice.findUnique({
+    const originalInvoice = await this.tenantPrisma.client.purchaseInvoice.findUnique({
       where: { id: purchaseInvoiceId, isDeleted: false },
       include: {
         supplier: {
@@ -224,7 +225,7 @@ export class PurchaseReturnInvoicesService {
 
     // Get the warehouse transaction for this purchase invoice to find the destination warehouse
     const purchaseWarehouseTransaction =
-      await this.prisma.warehouseTransaction.findFirst({
+      await this.tenantPrisma.client.warehouseTransaction.findFirst({
         where: {
           purchaseInvoiceId: purchaseInvoiceId,
           type: 'PURCHASE',
@@ -254,7 +255,7 @@ export class PurchaseReturnInvoicesService {
     for (const returnItem of items) {
       const returnable = returnableMap.get(
         returnItem.originalPurchaseInvoiceItemId,
-      );
+      ) as any;
       if (!returnable) {
         throw new BadRequestException(
           `الصنف بالمعرف ${returnItem.originalPurchaseInvoiceItemId} غير موجود في الفاتورة`,
@@ -279,7 +280,7 @@ export class PurchaseReturnInvoicesService {
       returnInvoiceNumber || (await this.generateReturnInvoiceNumber());
 
     // Check if return invoice number already exists
-    let existingReturn = await this.prisma.purchaseReturnInvoice.findUnique({
+    let existingReturn = await this.tenantPrisma.client.purchaseReturnInvoice.findUnique({
       where: { returnInvoiceNumber: finalReturnInvoiceNumber },
     });
 
@@ -287,7 +288,7 @@ export class PurchaseReturnInvoicesService {
     let attempts = 0;
     while (existingReturn && attempts < 10) {
       finalReturnInvoiceNumber = await this.generateReturnInvoiceNumber();
-      existingReturn = await this.prisma.purchaseReturnInvoice.findUnique({
+      existingReturn = await this.tenantPrisma.client.purchaseReturnInvoice.findUnique({
         where: { returnInvoiceNumber: finalReturnInvoiceNumber },
       });
       attempts++;
@@ -306,7 +307,7 @@ export class PurchaseReturnInvoicesService {
     );
     const netAmount = totalAmount; // No discount on returns for now
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.tenantPrisma.client.$transaction(async (tx) => {
       // 1. Create return invoice
       const returnInvoice = await tx.purchaseReturnInvoice.create({
         data: {
@@ -663,7 +664,7 @@ export class PurchaseReturnInvoicesService {
     const skip = (pageNum - 1) * limitNum;
 
     const [returnInvoices, totalCount] = await Promise.all([
-      this.prisma.purchaseReturnInvoice.findMany({
+      this.tenantPrisma.client.purchaseReturnInvoice.findMany({
         where,
         include: {
           purchaseInvoice: {
@@ -706,7 +707,7 @@ export class PurchaseReturnInvoicesService {
         skip,
         take: limitNum,
       }),
-      this.prisma.purchaseReturnInvoice.count({ where }),
+      this.tenantPrisma.client.purchaseReturnInvoice.count({ where }),
     ]);
 
     return {
@@ -721,7 +722,7 @@ export class PurchaseReturnInvoicesService {
   }
 
   async findOne(id: number) {
-    const returnInvoice = await this.prisma.purchaseReturnInvoice.findUnique({
+    const returnInvoice = await this.tenantPrisma.client.purchaseReturnInvoice.findUnique({
       where: { id, isDeleted: false },
       include: {
         purchaseInvoice: {
@@ -778,7 +779,7 @@ export class PurchaseReturnInvoicesService {
   async update(id: number, updateDto: UpdatePurchaseReturnInvoiceDto) {
     // const existingReturn = await this.findOne(id);
 
-    return this.prisma.purchaseReturnInvoice.update({
+    return this.tenantPrisma.client.purchaseReturnInvoice.update({
       where: { id },
       data: {
         ...updateDto,
@@ -802,7 +803,7 @@ export class PurchaseReturnInvoicesService {
     const returnInvoice = await this.findOne(id);
 
     // Check if there are related accounting transactions
-    const transactionCount = await this.prisma.transaction.count({
+    const transactionCount = await this.tenantPrisma.client.transaction.count({
       where: {
         isDeleted: false,
         purchaseReturnInvoiceId: id,
@@ -817,7 +818,7 @@ export class PurchaseReturnInvoicesService {
 
     // Get warehouse transactions related to this return invoice
     const warehouseTransactions =
-      await this.prisma.warehouseTransaction.findMany({
+      await this.tenantPrisma.client.warehouseTransaction.findMany({
         where: {
           type: WarehouseTransactionType.RETURN,
           purchaseInvoiceId: returnInvoice.purchaseInvoiceId,
@@ -836,7 +837,7 @@ export class PurchaseReturnInvoicesService {
     }
 
     // Soft delete the return invoice
-    await this.prisma.$transaction(async (tx) => {
+    await this.tenantPrisma.client.$transaction(async (tx) => {
       // Delete return invoice items
       await tx.purchaseReturnInvoiceItem.deleteMany({
         where: { returnInvoiceId: id },

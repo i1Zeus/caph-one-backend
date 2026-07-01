@@ -6,6 +6,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { Decimal } from '@prisma/client/runtime/library';
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import { SalesInvoicesService } from '../accounting/sales-invoices/sales-invoices.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -19,6 +20,7 @@ import { POSProduct } from './entities';
 export class PosService {
   constructor(
     private prisma: PrismaService,
+    private tenantPrisma: TenantPrismaService,
     @Inject(forwardRef(() => SalesInvoicesService))
     private salesInvoicesService: SalesInvoicesService,
   ) {}
@@ -58,7 +60,7 @@ export class PosService {
     }
 
     const [products, total] = await Promise.all([
-      this.prisma.product.findMany({
+      this.tenantPrisma.client.product.findMany({
         where,
         skip,
         take: limit,
@@ -75,7 +77,7 @@ export class PosService {
           },
         },
       }),
-      this.prisma.product.count({ where }),
+      this.tenantPrisma.client.product.count({ where }),
     ]);
 
     const posProducts: POSProduct[] = products.map((product) => {
@@ -133,7 +135,7 @@ export class PosService {
     barcode: string,
     warehouseId?: number,
   ): Promise<POSProduct> {
-    const product = await this.prisma.product.findFirst({
+    const product = await this.tenantPrisma.client.product.findFirst({
       where: {
         barcode,
         isDeleted: false,
@@ -206,7 +208,7 @@ export class PosService {
    */
   async processTransaction(dto: CreatePosTransactionDto, employeeId: string) {
     // Fetch employee to get their userId
-    const employee = await this.prisma.employee.findUnique({
+    const employee = await this.tenantPrisma.client.employee.findUnique({
       where: { id: employeeId },
       select: { id: true, userId: true },
     });
@@ -216,7 +218,7 @@ export class PosService {
     }
 
     // Verify session exists and is open
-    const session = await this.prisma.pOSSession.findUnique({
+    const session = await this.tenantPrisma.client.pOSSession.findUnique({
       where: { id: dto.posSessionId },
       include: { pos: true },
     });
@@ -273,7 +275,7 @@ export class PosService {
     );
 
     // Update session totals - use the final discounted totalAmount from the invoice
-    await this.prisma.pOSSession.update({
+    await this.tenantPrisma.client.pOSSession.update({
       where: { id: session.id },
       data: {
         totalSales: {
@@ -292,7 +294,7 @@ export class PosService {
    * Get transactions for a session
    */
   async getSessionTransactions(sessionId: number) {
-    const session = await this.prisma.pOSSession.findUnique({
+    const session = await this.tenantPrisma.client.pOSSession.findUnique({
       where: { id: sessionId },
     });
 
@@ -300,7 +302,7 @@ export class PosService {
       throw new NotFoundException('Session not found');
     }
 
-    const invoices = await this.prisma.salesInvoice.findMany({
+    const invoices = await this.tenantPrisma.client.salesInvoice.findMany({
       where: {
         posSessionId: sessionId,
         isDeleted: false,
@@ -355,7 +357,7 @@ export class PosService {
     }
 
     const [categories, total] = await Promise.all([
-      this.prisma.productCategory.findMany({
+      this.tenantPrisma.client.productCategory.findMany({
         where,
         skip,
         take: limit,
@@ -379,7 +381,7 @@ export class PosService {
           },
         },
       }),
-      this.prisma.productCategory.count({ where }),
+      this.tenantPrisma.client.productCategory.count({ where }),
     ]);
 
     return {
@@ -401,7 +403,7 @@ export class PosService {
    */
   async getTerminalInvoices(posId: number) {
     // Verify terminal exists
-    const terminal = await this.prisma.pOS.findUnique({
+    const terminal = await this.tenantPrisma.client.pOS.findUnique({
       where: { id: posId },
     });
 
@@ -410,7 +412,7 @@ export class PosService {
     }
 
     // Get all invoices from this terminal's sessions that are not already returns
-    const invoices = await this.prisma.salesInvoice.findMany({
+    const invoices = await this.tenantPrisma.client.salesInvoice.findMany({
       where: {
         isPOS: true,
         isReturn: false, // Only show original invoices, not returns
@@ -468,7 +470,7 @@ export class PosService {
    * Validates that the invoice belongs to the specified terminal
    */
   async getInvoiceForReturn(invoiceId: number, posId: number) {
-    const invoice = await this.prisma.salesInvoice.findUnique({
+    const invoice = await this.tenantPrisma.client.salesInvoice.findUnique({
       where: { id: invoiceId },
       include: {
         client: {
@@ -545,7 +547,7 @@ export class PosService {
    */
   async processReturn(dto: CreatePosReturnDto, employeeId: string) {
     // Fetch employee to get their userId
-    const employee = await this.prisma.employee.findUnique({
+    const employee = await this.tenantPrisma.client.employee.findUnique({
       where: { id: employeeId },
       select: { id: true, userId: true },
     });
@@ -555,7 +557,7 @@ export class PosService {
     }
 
     // Verify session exists and is open
-    const session = await this.prisma.pOSSession.findUnique({
+    const session = await this.tenantPrisma.client.pOSSession.findUnique({
       where: { id: dto.posSessionId },
       include: { pos: true },
     });
@@ -572,20 +574,20 @@ export class PosService {
     // No need to check if it's the same employee who opened the session
 
     // Get and validate original invoice
-    const originalInvoice = await this.getInvoiceForReturn(
+    const originalInvoice = (await this.getInvoiceForReturn(
       dto.originalInvoiceId,
       session.pos.id,
-    );
+    )) as any;
 
     // Validate return items against original invoice items
-    const originalItemsMap = new Map(
-      originalInvoice.items.map((item) => [item.id, item]),
+    const originalItemsMap = new Map<any, any>(
+      originalInvoice.items.map((item: any) => [item.id, item]),
     );
 
     for (const returnItem of dto.items) {
       const originalItem = originalItemsMap.get(
         returnItem.originalInvoiceItemId,
-      );
+      ) as any;
 
       if (!originalItem) {
         throw new BadRequestException(
@@ -608,7 +610,9 @@ export class PosService {
 
     // Calculate total return amount (negative)
     const returnItems = dto.items.map((item) => {
-      const originalItem = originalItemsMap.get(item.originalInvoiceItemId);
+      const originalItem = originalItemsMap.get(
+        item.originalInvoiceItemId,
+      ) as any;
       const unitPrice =
         item.adjustedUnitPrice ?? Number(originalItem.unitPrice);
 
@@ -654,7 +658,7 @@ export class PosService {
     );
 
     // Update session totals - subtract return amount (since it's negative, this decreases totalSales)
-    await this.prisma.pOSSession.update({
+    await this.tenantPrisma.client.pOSSession.update({
       where: { id: session.id },
       data: {
         totalSales: {

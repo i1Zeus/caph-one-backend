@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProductsService } from './products/products.service';
@@ -11,7 +12,7 @@ export class InventoryService {
   private readonly logger = new Logger(InventoryService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService,
     private readonly productsService: ProductsService,
     private readonly stockService: StockService,
     private readonly unitsService: UnitsService,
@@ -97,7 +98,7 @@ export class InventoryService {
     };
 
     try {
-      await this.prisma.$queryRaw`SELECT 1`;
+      await this.tenantPrisma.client.$queryRaw`SELECT 1`;
     } catch (error) {
       this.logger.error('Database health check failed', error.stack);
       healthStatus.status = 'DEGRADED';
@@ -125,14 +126,14 @@ export class InventoryService {
       topProductsByQuantity,
       topWarehousesByStockValue,
     ] = await Promise.all([
-      this.prisma.product.count({ where: { isDeleted: false } }),
-      this.prisma.product.count({
+      this.tenantPrisma.client.product.count({ where: { isDeleted: false } }),
+      this.tenantPrisma.client.product.count({
         where: { isActive: true, isDeleted: false },
       }),
-      this.prisma.warehouse.count({ where: { isDeleted: false } }),
+      this.tenantPrisma.client.warehouse.count({ where: { isDeleted: false } }),
       this.stockService.getStockStats().then((stats) => stats.totalQuantity),
       this.stockService.getStockStats().then((stats) => stats.totalValue),
-      this.prisma.warehouseTransaction.count({
+      this.tenantPrisma.client.warehouseTransaction.count({
         where: {
           date: {
             gte: startDate,
@@ -140,7 +141,7 @@ export class InventoryService {
           },
         },
       }),
-      this.prisma.warehouseTransaction.groupBy({
+      this.tenantPrisma.client.warehouseTransaction.groupBy({
         by: ['type'],
         _count: {
           id: true,
@@ -188,7 +189,7 @@ export class InventoryService {
     const stockAlerts = await this.stockService.getStockAlerts();
 
     // Add other types of alerts if needed, e.g., inactive products/warehouses
-    const inactiveProducts = await this.prisma.product.count({
+    const inactiveProducts = await this.tenantPrisma.client.product.count({
       where: {
         isActive: false,
         isDeleted: false,
@@ -196,7 +197,7 @@ export class InventoryService {
       },
     });
 
-    const inactiveWarehouses = await this.prisma.warehouse.count({
+    const inactiveWarehouses = await this.tenantPrisma.client.warehouse.count({
       where: {
         isActive: false,
         isDeleted: false,
@@ -252,7 +253,7 @@ export class InventoryService {
     limit: number = 5,
   ) {
     const productQuantities =
-      await this.prisma.warehouseTransactionItem.groupBy({
+      await this.tenantPrisma.client.warehouseTransactionItem.groupBy({
         by: ['productId'],
         _sum: {
           quantity: true,
@@ -277,7 +278,7 @@ export class InventoryService {
       });
 
     const productIds = productQuantities.map((pq) => pq.productId);
-    const products = await this.prisma.product.findMany({
+    const products = await this.tenantPrisma.client.product.findMany({
       where: { id: { in: productIds } },
       select: { id: true, name: true, barcode: true },
     });
@@ -289,7 +290,7 @@ export class InventoryService {
   }
 
   private async getTopWarehousesByStockValue(limit: number = 5) {
-    const warehousesWithStock = await this.prisma.warehouse.findMany({
+    const warehousesWithStock = await this.tenantPrisma.client.warehouse.findMany({
       where: { isDeleted: false, isActive: true },
       include: {
         stocks: {

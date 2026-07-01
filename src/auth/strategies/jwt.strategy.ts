@@ -21,6 +21,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       permissions: payload.permissions || [], // Extract permissions array
       name: payload.name,
       phone: payload.phone,
+      tenantId: payload.tenantId, // Scoped organization ID
+      isSuperAdmin: payload.isSuperAdmin === true, // SuperAdmin flag
       id: payload.sub, // Also provide id for backward compatibility
     };
   }

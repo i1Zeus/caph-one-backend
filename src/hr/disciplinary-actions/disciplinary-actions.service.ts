@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -14,7 +15,7 @@ import {
 
 @Injectable()
 export class DisciplinaryActionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(
     createDto: CreateDisciplinaryActionDto,
@@ -22,7 +23,7 @@ export class DisciplinaryActionsService {
   ): Promise<DisciplinaryAction> {
     try {
       // Verify employee exists
-      const employee = await this.prisma.employee.findUnique({
+      const employee = await this.tenantPrisma.client.employee.findUnique({
         where: { id: createDto.employeeId, isDeleted: false },
       });
 
@@ -31,7 +32,7 @@ export class DisciplinaryActionsService {
       }
 
       // Create disciplinary action
-      const action = await this.prisma.disciplinaryAction.create({
+      const action = await this.tenantPrisma.client.disciplinaryAction.create({
         data: {
           employeeId: createDto.employeeId,
           type: createDto.type,
@@ -148,7 +149,7 @@ export class DisciplinaryActionsService {
     orderBy[sortBy] = sortOrder;
 
     const [actions, total] = await Promise.all([
-      this.prisma.disciplinaryAction.findMany({
+      this.tenantPrisma.client.disciplinaryAction.findMany({
         where,
         skip,
         take: limit,
@@ -176,7 +177,7 @@ export class DisciplinaryActionsService {
         },
         orderBy,
       }),
-      this.prisma.disciplinaryAction.count({ where }),
+      this.tenantPrisma.client.disciplinaryAction.count({ where }),
     ]);
 
     return {
@@ -193,7 +194,7 @@ export class DisciplinaryActionsService {
   }
 
   async findOne(id: string): Promise<DisciplinaryAction> {
-    const action = await this.prisma.disciplinaryAction.findUnique({
+    const action = await this.tenantPrisma.client.disciplinaryAction.findUnique({
       where: { id, isDeleted: false },
       include: {
         employee: {
@@ -235,7 +236,7 @@ export class DisciplinaryActionsService {
   }
 
   async findByEmployee(employeeId: string) {
-    const employee = await this.prisma.employee.findUnique({
+    const employee = await this.tenantPrisma.client.employee.findUnique({
       where: { id: employeeId, isDeleted: false },
     });
 
@@ -243,7 +244,7 @@ export class DisciplinaryActionsService {
       throw new NotFoundException('Employee not found');
     }
 
-    return this.prisma.disciplinaryAction.findMany({
+    return this.tenantPrisma.client.disciplinaryAction.findMany({
       where: {
         employeeId,
         isDeleted: false,
@@ -269,7 +270,7 @@ export class DisciplinaryActionsService {
   ): Promise<DisciplinaryAction> {
     // const action = await this.findOne(id);
 
-    const updatedAction = await this.prisma.disciplinaryAction.update({
+    const updatedAction = await this.tenantPrisma.client.disciplinaryAction.update({
       where: { id },
       data: {
         type: updateDto.type,
@@ -330,7 +331,7 @@ export class DisciplinaryActionsService {
       throw new BadRequestException('Action is already resolved or cancelled');
     }
 
-    const resolvedAction = await this.prisma.disciplinaryAction.update({
+    const resolvedAction = await this.tenantPrisma.client.disciplinaryAction.update({
       where: { id },
       data: {
         status: resolveDto.status,
@@ -364,7 +365,7 @@ export class DisciplinaryActionsService {
   async remove(id: string): Promise<DisciplinaryAction> {
     // const action = await this.findOne(id);
 
-    return await this.prisma.disciplinaryAction.update({
+    return await this.tenantPrisma.client.disciplinaryAction.update({
       where: { id },
       data: { isDeleted: true },
       include: {
@@ -375,7 +376,7 @@ export class DisciplinaryActionsService {
   }
 
   async getEmployeeActionHistory(employeeId: string) {
-    const employee = await this.prisma.employee.findUnique({
+    const employee = await this.tenantPrisma.client.employee.findUnique({
       where: { id: employeeId, isDeleted: false },
     });
 
@@ -384,7 +385,7 @@ export class DisciplinaryActionsService {
     }
 
     const [actions, stats] = await Promise.all([
-      this.prisma.disciplinaryAction.findMany({
+      this.tenantPrisma.client.disciplinaryAction.findMany({
         where: {
           employeeId,
           isDeleted: false,
@@ -427,36 +428,36 @@ export class DisciplinaryActionsService {
       totalSuspensionDays,
     ] = await Promise.all([
       // Total actions
-      this.prisma.disciplinaryAction.count({
+      this.tenantPrisma.client.disciplinaryAction.count({
         where: { employeeId, isDeleted: false },
       }),
       // Active actions
-      this.prisma.disciplinaryAction.count({
+      this.tenantPrisma.client.disciplinaryAction.count({
         where: { employeeId, isDeleted: false, status: 'ACTIVE' },
       }),
       // Resolved actions
-      this.prisma.disciplinaryAction.count({
+      this.tenantPrisma.client.disciplinaryAction.count({
         where: { employeeId, isDeleted: false, status: 'RESOLVED' },
       }),
       // By type
-      this.prisma.disciplinaryAction.groupBy({
+      this.tenantPrisma.client.disciplinaryAction.groupBy({
         by: ['type'],
         where: { employeeId, isDeleted: false },
         _count: { type: true },
       }),
       // By severity
-      this.prisma.disciplinaryAction.groupBy({
+      this.tenantPrisma.client.disciplinaryAction.groupBy({
         by: ['severity'],
         where: { employeeId, isDeleted: false },
         _count: { severity: true },
       }),
       // Total deductions
-      this.prisma.disciplinaryAction.aggregate({
+      this.tenantPrisma.client.disciplinaryAction.aggregate({
         where: { employeeId, isDeleted: false, type: 'SALARY_DEDUCTION' },
         _sum: { deductionAmount: true },
       }),
       // Total suspension days
-      this.prisma.disciplinaryAction.aggregate({
+      this.tenantPrisma.client.disciplinaryAction.aggregate({
         where: { employeeId, isDeleted: false, type: 'SUSPENSION' },
         _sum: { suspensionDays: true },
       }),
@@ -489,31 +490,31 @@ export class DisciplinaryActionsService {
       byCategory,
       recentActions,
     ] = await Promise.all([
-      this.prisma.disciplinaryAction.count({
+      this.tenantPrisma.client.disciplinaryAction.count({
         where: { isDeleted: false },
       }),
-      this.prisma.disciplinaryAction.count({
+      this.tenantPrisma.client.disciplinaryAction.count({
         where: { isDeleted: false, status: 'ACTIVE' },
       }),
-      this.prisma.disciplinaryAction.count({
+      this.tenantPrisma.client.disciplinaryAction.count({
         where: { isDeleted: false, status: 'RESOLVED' },
       }),
-      this.prisma.disciplinaryAction.groupBy({
+      this.tenantPrisma.client.disciplinaryAction.groupBy({
         by: ['type'],
         where: { isDeleted: false },
         _count: { type: true },
       }),
-      this.prisma.disciplinaryAction.groupBy({
+      this.tenantPrisma.client.disciplinaryAction.groupBy({
         by: ['severity'],
         where: { isDeleted: false },
         _count: { severity: true },
       }),
-      this.prisma.disciplinaryAction.groupBy({
+      this.tenantPrisma.client.disciplinaryAction.groupBy({
         by: ['category'],
         where: { isDeleted: false },
         _count: { category: true },
       }),
-      this.prisma.disciplinaryAction.findMany({
+      this.tenantPrisma.client.disciplinaryAction.findMany({
         where: { isDeleted: false },
         take: 10,
         include: {
@@ -557,7 +558,7 @@ export class DisciplinaryActionsService {
   }
 
   async getCriticalActions() {
-    return this.prisma.disciplinaryAction.findMany({
+    return this.tenantPrisma.client.disciplinaryAction.findMany({
       where: {
         isDeleted: false,
         severity: 'CRITICAL',
@@ -586,7 +587,7 @@ export class DisciplinaryActionsService {
   }
 
   async getEmployeesWithMultipleWarnings(minWarnings: number = 3) {
-    const employees = await this.prisma.employee.findMany({
+    const employees = await this.tenantPrisma.client.employee.findMany({
       where: {
         isDeleted: false,
         disciplinaryActions: {

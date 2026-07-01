@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -22,7 +23,7 @@ import { Task, TaskWithFullSubtasks } from './entities/task.entity';
 @Injectable()
 export class TasksService {
   constructor(
-    private prisma: PrismaService,
+    private prisma: PrismaService, private tenantPrisma: TenantPrismaService,
     private notificationsService: NotificationsService,
     private permissionsService: DynamicPermissionsService,
   ) {}
@@ -57,7 +58,7 @@ export class TasksService {
     // Get project name if not included in task
     let projectName = task.project?.name;
     if (!projectName) {
-      const project = await this.prisma.project.findUnique({
+      const project = await this.tenantPrisma.client.project.findUnique({
         where: { id: task.projectId },
         select: { name: true },
       });
@@ -65,7 +66,7 @@ export class TasksService {
     }
 
     // Get user details for notification
-    const users = await this.prisma.user.findMany({
+    const users = await this.tenantPrisma.client.user.findMany({
       where: {
         id: { in: newlyAssignedUserIds },
         isDeleted: false,
@@ -102,7 +103,7 @@ export class TasksService {
   async create(createTaskDto: CreateTaskDto, userId?: string): Promise<Task> {
     try {
       // Verify that the project exists
-      const project = await this.prisma.project.findFirst({
+      const project = await this.tenantPrisma.client.project.findFirst({
         where: {
           id: createTaskDto.projectId,
           isDeleted: false,
@@ -115,7 +116,7 @@ export class TasksService {
 
       // Verify task stage if provided
       if (createTaskDto.taskStageId) {
-        const taskStage = await this.prisma.taskStage.findFirst({
+        const taskStage = await this.tenantPrisma.client.taskStage.findFirst({
           where: {
             id: createTaskDto.taskStageId,
             projectId: createTaskDto.projectId,
@@ -132,7 +133,7 @@ export class TasksService {
 
       // Verify parent task if provided
       if (createTaskDto.parentId) {
-        const parentTask = await this.prisma.task.findFirst({
+        const parentTask = await this.tenantPrisma.client.task.findFirst({
           where: {
             id: createTaskDto.parentId,
             projectId: createTaskDto.projectId, // Subtask must be in same project
@@ -152,7 +153,7 @@ export class TasksService {
 
       // Verify assignees if provided
       if (createTaskDto.assigneeIds && createTaskDto.assigneeIds.length > 0) {
-        const users = await this.prisma.user.findMany({
+        const users = await this.tenantPrisma.client.user.findMany({
           where: {
             id: { in: createTaskDto.assigneeIds },
             isDeleted: false,
@@ -175,7 +176,7 @@ export class TasksService {
       // Determine order if not provided
       let order = createTaskDto.order;
       if (order === undefined && createTaskDto.taskStageId) {
-        const maxOrderTask = await this.prisma.task.findFirst({
+        const maxOrderTask = await this.tenantPrisma.client.task.findFirst({
           where: {
             taskStageId: createTaskDto.taskStageId,
             isDeleted: false,
@@ -186,7 +187,7 @@ export class TasksService {
         order = (maxOrderTask?.order ?? -1) + 1;
       }
 
-      const task = await this.prisma.task.create({
+      const task = await this.tenantPrisma.client.task.create({
         data: {
           title: createTaskDto.title,
           description: createTaskDto.description,
@@ -510,7 +511,7 @@ export class TasksService {
       whereClause.AND = additionalConditions;
     }
 
-    const tasks = await this.prisma.task.findMany({
+    const tasks = await this.tenantPrisma.client.task.findMany({
       where: whereClause,
       include: {
         parent: {
@@ -809,12 +810,12 @@ export class TasksService {
     }
 
     // Get total count for pagination
-    const total = await this.prisma.task.count({
+    const total = await this.tenantPrisma.client.task.count({
       where: whereClause,
     });
 
     // Get paginated tasks
-    const tasks = await this.prisma.task.findMany({
+    const tasks = await this.tenantPrisma.client.task.findMany({
       where: whereClause,
       include: {
         parent: {
@@ -957,7 +958,7 @@ export class TasksService {
       whereClause.AND = additionalConditions;
     }
 
-    const task = await this.prisma.task.findFirst({
+    const task = await this.tenantPrisma.client.task.findFirst({
       where: whereClause,
       include: {
         parent: {
@@ -1024,7 +1025,7 @@ export class TasksService {
    * Private method to find a task without access control filtering (for internal operations)
    */
   private async findOneInternal(id: string): Promise<Task> {
-    const task = await this.prisma.task.findFirst({
+    const task = await this.tenantPrisma.client.task.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -1100,7 +1101,7 @@ export class TasksService {
 
   async update(id: string, updateTaskDto: UpdateTaskDto): Promise<Task> {
     // Check if task exists and get current assignees
-    const existingTask = await this.prisma.task.findFirst({
+    const existingTask = await this.tenantPrisma.client.task.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -1126,7 +1127,7 @@ export class TasksService {
     try {
       // Verify project if provided
       if (updateTaskDto.projectId) {
-        const project = await this.prisma.project.findFirst({
+        const project = await this.tenantPrisma.client.project.findFirst({
           where: {
             id: updateTaskDto.projectId,
             isDeleted: false,
@@ -1141,7 +1142,7 @@ export class TasksService {
       // Verify task stage if provided
       if (updateTaskDto.taskStageId) {
         const projectId = updateTaskDto.projectId || existingTask.projectId;
-        const taskStage = await this.prisma.taskStage.findFirst({
+        const taskStage = await this.tenantPrisma.client.taskStage.findFirst({
           where: {
             id: updateTaskDto.taskStageId,
             projectId: projectId,
@@ -1159,7 +1160,7 @@ export class TasksService {
       // Verify parent task if provided
       if (updateTaskDto.parentId !== undefined) {
         if (updateTaskDto.parentId) {
-          const parentTask = await this.prisma.task.findFirst({
+          const parentTask = await this.tenantPrisma.client.task.findFirst({
             where: {
               id: updateTaskDto.parentId,
               projectId: updateTaskDto.projectId || existingTask.projectId,
@@ -1188,7 +1189,7 @@ export class TasksService {
       if (updateTaskDto.assigneeIds) {
         // Get the project's workspace ID
         const projectId = updateTaskDto.projectId || existingTask.projectId;
-        const project = await this.prisma.project.findFirst({
+        const project = await this.tenantPrisma.client.project.findFirst({
           where: {
             id: projectId,
             isDeleted: false,
@@ -1200,7 +1201,7 @@ export class TasksService {
           throw new BadRequestException('Project not found');
         }
 
-        const users = await this.prisma.user.findMany({
+        const users = await this.tenantPrisma.client.user.findMany({
           where: {
             id: { in: updateTaskDto.assigneeIds },
             isDeleted: false,
@@ -1223,7 +1224,7 @@ export class TasksService {
       // Prepare update data
       const { assigneeIds, startDate, endDate, ...updateData } = updateTaskDto;
 
-      const task = await this.prisma.task.update({
+      const task = await this.tenantPrisma.client.task.update({
         where: { id },
         data: {
           ...updateData,
@@ -1328,7 +1329,7 @@ export class TasksService {
     try {
       // Validate all tasks exist and get their current data
       const taskIds = reorderTasksDto.tasks.map((t) => t.id);
-      const existingTasks = await this.prisma.task.findMany({
+      const existingTasks = await this.tenantPrisma.client.task.findMany({
         where: {
           id: { in: taskIds },
           isDeleted: false,
@@ -1345,7 +1346,7 @@ export class TasksService {
 
       // Update each task's order and stage
       const updatePromises = reorderTasksDto.tasks.map((taskOrder) =>
-        this.prisma.task.update({
+        this.tenantPrisma.client.task.update({
           where: { id: taskOrder.id },
           data: {
             order: taskOrder.order,
@@ -1367,7 +1368,7 @@ export class TasksService {
 
   async remove(id: string): Promise<{ message: string }> {
     // Check if task exists
-    const existingTask = await this.prisma.task.findFirst({
+    const existingTask = await this.tenantPrisma.client.task.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -1380,7 +1381,7 @@ export class TasksService {
 
     try {
       // Soft delete the task
-      await this.prisma.task.update({
+      await this.tenantPrisma.client.task.update({
         where: { id },
         data: {
           isDeleted: true,
@@ -1397,7 +1398,7 @@ export class TasksService {
     const task = await this.findOneInternal(taskId);
 
     // Get the task's project workspace ID
-    const project = await this.prisma.project.findFirst({
+    const project = await this.tenantPrisma.client.project.findFirst({
       where: {
         id: task.projectId,
         isDeleted: false,
@@ -1410,7 +1411,7 @@ export class TasksService {
     }
 
     // Verify users exist and are members of the project's workspace
-    const users = await this.prisma.user.findMany({
+    const users = await this.tenantPrisma.client.user.findMany({
       where: {
         id: { in: userIds },
         isDeleted: false,
@@ -1429,7 +1430,7 @@ export class TasksService {
       );
     }
 
-    const updatedTask = await this.prisma.task.update({
+    const updatedTask = await this.tenantPrisma.client.task.update({
       where: { id: taskId },
       data: {
         assignees: {
@@ -1470,7 +1471,7 @@ export class TasksService {
   async unassignUsers(taskId: string, userIds: string[]): Promise<Task> {
     const task = await this.findOneInternal(taskId);
 
-    const updatedTask = await this.prisma.task.update({
+    const updatedTask = await this.tenantPrisma.client.task.update({
       where: { id: taskId },
       data: {
         assignees: {
@@ -1541,7 +1542,7 @@ export class TasksService {
       return true;
     }
 
-    const ancestorTask = await this.prisma.task.findFirst({
+    const ancestorTask = await this.tenantPrisma.client.task.findFirst({
       where: {
         id: ancestorId,
         isDeleted: false,
@@ -1560,7 +1561,7 @@ export class TasksService {
    * Get a task with all its subtasks in a hierarchical structure
    */
   async findWithSubtasks(id: string): Promise<TaskWithFullSubtasks> {
-    const task = await this.prisma.task.findFirst({
+    const task = await this.tenantPrisma.client.task.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -1694,7 +1695,7 @@ export class TasksService {
    */
   async getSubtasks(parentId: string): Promise<Task[]> {
     // Verify parent task exists
-    const parentTask = await this.prisma.task.findFirst({
+    const parentTask = await this.tenantPrisma.client.task.findFirst({
       where: {
         id: parentId,
         isDeleted: false,
@@ -1705,7 +1706,7 @@ export class TasksService {
       throw new NotFoundException(`Parent task with ID ${parentId} not found`);
     }
 
-    const subtasks = await this.prisma.task.findMany({
+    const subtasks = await this.tenantPrisma.client.task.findMany({
       where: {
         parentId,
         isDeleted: false,
@@ -1776,7 +1777,7 @@ export class TasksService {
     userId?: string,
   ): Promise<Task> {
     // Verify parent task exists and get its project
-    const parentTask = await this.prisma.task.findFirst({
+    const parentTask = await this.tenantPrisma.client.task.findFirst({
       where: {
         id: parentId,
         isDeleted: false,
@@ -1821,7 +1822,7 @@ export class TasksService {
    */
   async convertToSubtask(taskId: string, newParentId: string): Promise<Task> {
     // Verify target parent exists and is in same project
-    const parentTask = await this.prisma.task.findFirst({
+    const parentTask = await this.tenantPrisma.client.task.findFirst({
       where: {
         id: newParentId,
         isDeleted: false,
@@ -1930,7 +1931,7 @@ export class TasksService {
       whereClause.AND = additionalConditions;
     }
 
-    const tasks = await this.prisma.task.findMany({
+    const tasks = await this.tenantPrisma.client.task.findMany({
       where: whereClause,
       include: {
         parent: {

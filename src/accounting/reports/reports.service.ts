@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -54,7 +55,7 @@ import {
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   /**
    * Calculate account balance using double-entry accounting principles
@@ -156,7 +157,7 @@ export class ReportsService {
         }
 
         // Get transactions that have lines matching the account filter
-        const transactionIds = await this.prisma.transactionLine.findMany({
+        const transactionIds = await this.tenantPrisma.client.transactionLine.findMany({
           where: lineWhereClause,
           select: { transactionId: true },
           distinct: ['transactionId'],
@@ -169,7 +170,7 @@ export class ReportsService {
 
       // Get transactions with all related data
       const [transactions, totalCount] = await Promise.all([
-        this.prisma.transaction.findMany({
+        this.tenantPrisma.client.transaction.findMany({
           where: whereClause,
           include: {
             client: true,
@@ -197,7 +198,7 @@ export class ReportsService {
           skip,
           take: limit,
         }),
-        this.prisma.transaction.count({ where: whereClause }),
+        this.tenantPrisma.client.transaction.count({ where: whereClause }),
       ]);
 
       // Transform data to general ledger entries (simple transaction list)
@@ -273,7 +274,7 @@ export class ReportsService {
     whereClause: any,
   ): Promise<GeneralLedgerSummary> {
     // Get all transactions matching the filter
-    const transactions = await this.prisma.transaction.findMany({
+    const transactions = await this.tenantPrisma.client.transaction.findMany({
       where: whereClause,
       include: {
         entries: {
@@ -406,7 +407,7 @@ export class ReportsService {
       }
 
       // Get accounts with their transaction totals
-      const accounts = await this.prisma.account.findMany({
+      const accounts = await this.tenantPrisma.client.account.findMany({
         where: accountWhereClause,
         include: {
           currency: true,
@@ -542,7 +543,7 @@ export class ReportsService {
       const skip = (page - 1) * limit;
 
       // Verify account exists
-      const account = await this.prisma.account.findUnique({
+      const account = await this.tenantPrisma.client.account.findUnique({
         where: { id: accountId, isDeleted: false },
         include: { currency: true },
       });
@@ -587,7 +588,7 @@ export class ReportsService {
       let openingBalance = 0;
       if (startDate) {
         const openingBalanceResult =
-          await this.prisma.transactionLine.aggregate({
+          await this.tenantPrisma.client.transactionLine.aggregate({
             where: {
               accountId,
               isDeleted: false,
@@ -613,7 +614,7 @@ export class ReportsService {
 
       // Get transaction lines
       const [transactionLines, totalCount] = await Promise.all([
-        this.prisma.transactionLine.findMany({
+        this.tenantPrisma.client.transactionLine.findMany({
           where: whereClause,
           include: {
             transaction: {
@@ -627,7 +628,7 @@ export class ReportsService {
           skip,
           take: limit,
         }),
-        this.prisma.transactionLine.count({ where: whereClause }),
+        this.tenantPrisma.client.transactionLine.count({ where: whereClause }),
       ]);
 
       // Transform to account statement entries with running balance
@@ -737,7 +738,7 @@ export class ReportsService {
       const skip = (page - 1) * limit;
 
       // Verify client exists
-      const client = await this.prisma.client.findUnique({
+      const client = await this.tenantPrisma.client.client.findUnique({
         where: { id: clientId },
         include: { account: { include: { currency: true } } },
       });
@@ -777,7 +778,7 @@ export class ReportsService {
       let openingBalance = 0;
       if (startDate) {
         const openingBalanceResult =
-          await this.prisma.transactionLine.aggregate({
+          await this.tenantPrisma.client.transactionLine.aggregate({
             where: {
               OR: [
                 { clientId: clientId },
@@ -808,7 +809,7 @@ export class ReportsService {
 
       // Get transaction lines with all related data
       const [transactionLines, totalCount] = await Promise.all([
-        this.prisma.transactionLine.findMany({
+        this.tenantPrisma.client.transactionLine.findMany({
           where: whereClause,
           include: {
             account: {
@@ -837,7 +838,7 @@ export class ReportsService {
           skip,
           take: limit,
         }),
-        this.prisma.transactionLine.count({ where: whereClause }),
+        this.tenantPrisma.client.transactionLine.count({ where: whereClause }),
       ]);
 
       // Transform to client statement entries with running balance
@@ -892,7 +893,7 @@ export class ReportsService {
           : totalCredits - totalDebits);
 
       // Get last transaction date
-      const lastTransaction = await this.prisma.transactionLine.findFirst({
+      const lastTransaction = await this.tenantPrisma.client.transactionLine.findFirst({
         where: {
           OR: [{ clientId: clientId }, { transaction: { clientId: clientId } }],
           isDeleted: false,
@@ -965,7 +966,7 @@ export class ReportsService {
    */
   async getAccountsSummary() {
     try {
-      const accounts = await this.prisma.account.findMany({
+      const accounts = await this.tenantPrisma.client.account.findMany({
         where: { isDeleted: false },
         include: {
           currency: true,
@@ -1090,7 +1091,7 @@ export class ReportsService {
         }
 
         // Get transactions that have lines matching the account filter
-        const transactionIds = await this.prisma.transactionLine.findMany({
+        const transactionIds = await this.tenantPrisma.client.transactionLine.findMany({
           where: lineWhereClause,
           select: { transactionId: true },
           distinct: ['transactionId'],
@@ -1103,7 +1104,7 @@ export class ReportsService {
 
       // Get transactions with all related data
       const [transactions, totalCount] = await Promise.all([
-        this.prisma.transaction.findMany({
+        this.tenantPrisma.client.transaction.findMany({
           where: whereClause,
           include: {
             client: true,
@@ -1139,7 +1140,7 @@ export class ReportsService {
           skip,
           take: limit,
         }),
-        this.prisma.transaction.count({ where: whereClause }),
+        this.tenantPrisma.client.transaction.count({ where: whereClause }),
       ]);
 
       // Transform data to journal entries
@@ -1219,7 +1220,7 @@ export class ReportsService {
     whereClause: any,
   ): Promise<JournalEntrySummary> {
     // Get all transactions matching the filter
-    const transactions = await this.prisma.transaction.findMany({
+    const transactions = await this.tenantPrisma.client.transaction.findMany({
       where: whereClause,
       include: {
         entries: {
@@ -1307,7 +1308,7 @@ export class ReportsService {
       }
 
       // Get all revenue accounts (REVENUE type)
-      const revenueAccounts = await this.prisma.account.findMany({
+      const revenueAccounts = await this.tenantPrisma.client.account.findMany({
         where: {
           type: AccountType.REVENUE,
           isDeleted: false,
@@ -1320,7 +1321,7 @@ export class ReportsService {
       });
 
       // Get all expense accounts (EXPENSE type)
-      const expenseAccounts = await this.prisma.account.findMany({
+      const expenseAccounts = await this.tenantPrisma.client.account.findMany({
         where: {
           type: AccountType.EXPENSE,
           isDeleted: false,
@@ -1493,7 +1494,7 @@ export class ReportsService {
       }
 
       const [transactions, totalCount] = await Promise.all([
-        this.prisma.transaction.findMany({
+        this.tenantPrisma.client.transaction.findMany({
           where: whereClause,
           include: {
             client: true,
@@ -1508,7 +1509,7 @@ export class ReportsService {
           skip,
           take: limit,
         }),
-        this.prisma.transaction.count({ where: whereClause }),
+        this.tenantPrisma.client.transaction.count({ where: whereClause }),
       ]);
 
       const data: ReceiptReportEntry[] = [];
@@ -1628,7 +1629,7 @@ export class ReportsService {
       }
 
       const [transactions, totalCount] = await Promise.all([
-        this.prisma.transaction.findMany({
+        this.tenantPrisma.client.transaction.findMany({
           where: whereClause,
           include: {
             client: true,
@@ -1643,7 +1644,7 @@ export class ReportsService {
           skip,
           take: limit,
         }),
-        this.prisma.transaction.count({ where: whereClause }),
+        this.tenantPrisma.client.transaction.count({ where: whereClause }),
       ]);
 
       const data: PaymentReportEntry[] = [];
@@ -1733,7 +1734,7 @@ export class ReportsService {
         whereClause.type = clientType;
       }
 
-      const clients = await this.prisma.client.findMany({
+      const clients = await this.tenantPrisma.client.client.findMany({
         where: whereClause,
         include: {
           salesInvoices: {
@@ -1759,7 +1760,7 @@ export class ReportsService {
         take: limit,
       });
 
-      const totalClientsCount = await this.prisma.client.count({
+      const totalClientsCount = await this.tenantPrisma.client.client.count({
         where: whereClause,
       });
 

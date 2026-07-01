@@ -7,6 +7,69 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Organization {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  logo          String?
+  maxWorkspaces Int      @default(3) // SuperAdmin controls this per org
+  isActive      Boolean  @default(true)
+  isDeleted     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  users                    User[]
+  workspaces               Workspace[]
+  invitationTokens         InvitationToken[]
+  clients                  Client[]
+  accounts                 Account[]
+  transactions             Transaction[]
+  currencies               Currency[]
+  departments              Department[]
+  employees                Employee[]
+  jobs                     Job[]
+  products                 Product[]
+  productCategories        ProductCategory[]
+  unitCategories           UnitCategory[]
+  units                    Unit[]
+  warehouses               Warehouse[]
+  warehouseTransactions    WarehouseTransaction[]
+  salesInvoices            SalesInvoice[]
+  purchaseInvoices         PurchaseInvoice[]
+  purchaseReturnInvoices   PurchaseReturnInvoice[]
+  salesReturnInvoices      SalesReturnInvoice[]
+  invoiceAccountingConfigs InvoiceAccountingConfig[]
+  accountingSettings       AccountingSettings[]
+  posTerminals             POS[]
+  invoiceTemplates         InvoiceTemplate[]
+  sales                    Sale[]
+  leads                    Lead[]
+  leadStages               LeadStage[]
+  actionHistories          ActionHistory[]
+  loginEvents              LoginEvent[]
+
+  @@map("organizations")
+}
+
+model InvitationToken {
+  id             String       @id @default(uuid())
+  token          String       @unique @default(uuid())
+  email          String // Pre-set email for the invited user
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  roleIds        String[] // Role IDs to assign upon signup
+  isUsed         Boolean      @default(false)
+  usedAt         DateTime?
+  usedByUserId   String? // The user who used this token
+  expiresAt      DateTime // Token expiration
+  createdAt      DateTime     @default(now())
+
+  @@index([token])
+  @@index([email])
+  @@map("invitation_tokens")
+}
+
 model Workspace {
   id            String          @id @default(uuid())
   name          String
@@ -17,6 +80,9 @@ model Workspace {
   projectStages ProjectStage[]  @relation("WorkspaceProjectStages")
   leads         Lead[]          @relation("WorkspaceLeads")
   leadStages    LeadStage[]     @relation("WorkspaceLeadStages")
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -32,6 +98,9 @@ model AccountingSettings {
   defaultSupplierAccount   Account? @relation("DefaultSupplierAccount", fields: [defaultSupplierAccountId], references: [id])
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("accounting_settings")
 }
@@ -84,9 +153,14 @@ model User {
   createdSales                  Sale[]                  @relation("SaleCreator")
   // Dynamic role assignment
   userRoles                     UserRole[]              @relation("UserRoles")
-  isDeleted                     Boolean                 @default(false)
-  createdAt                     DateTime                @default(now())
-  updatedAt                     DateTime                @updatedAt
+
+  isSuperAdmin   Boolean       @default(false)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Project {
@@ -232,6 +306,9 @@ model ActionHistory {
   performedBy String?
   user        User?    @relation("ActionUser", fields: [performedBy], references: [id])
   createdAt   DateTime @default(now())
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
 
 model LoginEvent {
@@ -249,6 +326,9 @@ model LoginEvent {
   longitude Float? // e.g. 44.3661
   userAgent String? // Full user-agent string
   createdAt DateTime @default(now())
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
 
 // ===== ACCOUNTING =====
@@ -273,6 +353,9 @@ model Client {
   salesInvoices    SalesInvoice[] // فواتير البيع (للعملاء)
   purchaseInvoices PurchaseInvoice[] // فواتير الشراء (للموردين)
   sales            Sale[] // Sales / Quotations
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("clients")
 }
@@ -310,6 +393,9 @@ model Currency {
   purchaseInvoices       PurchaseInvoice[]       @relation("PurchaseInvoiceCurrency")
   purchaseReturnInvoices PurchaseReturnInvoice[] @relation("PurchaseReturnInvoiceCurrency")
   salesReturnInvoices    SalesReturnInvoice[]    @relation("SalesReturnInvoiceCurrency")
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("currencies")
 }
@@ -349,6 +435,9 @@ model Account {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@map("accounts")
 }
 
@@ -387,6 +476,9 @@ model Transaction {
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("transactions")
 }
@@ -494,6 +586,9 @@ model Lead {
   isDeleted      Boolean        @default(false)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
 
 model LeadActivity {
@@ -536,6 +631,9 @@ model LeadStage {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@unique([workspaceId, order])
 }
 
@@ -566,6 +664,9 @@ model Department {
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
 
 // Employee Tables
@@ -652,6 +753,9 @@ model Employee {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@unique([fingerPrintId])
 }
 
@@ -736,6 +840,9 @@ model Job {
   isDeleted   Boolean    @default(false)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
 
 // Employee Documents - وثائق الموظفين
@@ -1164,6 +1271,9 @@ model SalesInvoice {
   // Payment splits - تقسيمات الدفع
   payments InvoicePayment[] @relation("SalesInvoicePayments")
 
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@index([isPOS, posSessionId])
   @@index([cashierId])
   @@map("sales_invoices")
@@ -1235,6 +1345,9 @@ model PurchaseInvoice {
   // Payment splits - تقسيمات الدفع
   payments InvoicePayment[] @relation("PurchaseInvoicePayments")
 
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@map("purchase_invoices")
 }
 
@@ -1245,7 +1358,7 @@ model InvoiceAccountingConfig {
   id Int @id @default(autoincrement())
 
   // اسم التكوين - Configuration Name
-  name String @default("Default Config") // اسم التكوين 
+  name String @default("Default Config") // اسم التكوين
 
   // نوع الفاتورة والدفع
   invoiceType InvoiceType // SALES أو PURCHASE
@@ -1269,6 +1382,9 @@ model InvoiceAccountingConfig {
   isDeleted   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("invoice_accounting_configs")
 }
@@ -1367,6 +1483,9 @@ model POS {
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("pos_terminals")
 }
@@ -1573,6 +1692,9 @@ model PurchaseReturnInvoice {
   // Return invoice items
   items PurchaseReturnInvoiceItem[]
 
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@map("purchase_return_invoices")
 }
 
@@ -1651,6 +1773,9 @@ model SalesReturnInvoice {
   // Return invoice items
   items SalesReturnInvoiceItem[]
 
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@map("sales_return_invoices")
 }
 
@@ -1709,10 +1834,13 @@ model UnitCategory {
   // العلاقات
   units Unit[] // الوحدات التابعة لهذه الفئة
 
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@map("unit_categories")
 }
 
-// 2. الوحدات المحسنة - Enhanced Units  
+// 2. الوحدات المحسنة - Enhanced Units
 model Unit {
   id          Int          @id @default(autoincrement())
   name        String // اسم الوحدة (متر، سنتيمتر، كيلومتر، إلخ)
@@ -1746,6 +1874,9 @@ model Unit {
 
   // العلاقات مع حركات المخزون
   warehouseTransactionItems WarehouseTransactionItem[] // أصناف حركات المخزون التي تستخدم هذه الوحدة
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([categoryId, name]) // منع تكرار الاسم في نفس الفئة
   @@map("units")
@@ -1791,6 +1922,9 @@ model Product {
   categories                 ProductCategoryRelation[]
   saleItems                  SaleItem[]
 
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@map("products")
 }
 
@@ -1804,6 +1938,9 @@ model ProductCategory {
   createdAt   DateTime                  @default(now())
   updatedAt   DateTime                  @updatedAt
   products    ProductCategoryRelation[]
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("product_categories")
 }
@@ -1843,6 +1980,9 @@ model Warehouse {
   stocks           Stock[]
   transactionsFrom WarehouseTransaction[] @relation("FromWarehouse")
   transactionsTo   WarehouseTransaction[] @relation("ToWarehouse")
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("warehouses")
 }
@@ -1952,6 +2092,9 @@ model WarehouseTransaction {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@map("warehouse_transactions")
 }
 
@@ -1996,7 +2139,7 @@ model WarehouseTransactionItem {
 // أنواع معاملات المخزون (مبسط)
 enum WarehouseTransactionType {
   PURCHASE // شراء - إدخال بضاعة جديدة من مورد
-  SALE // بيع - بيع في الصيدلية للزبائن  
+  SALE // بيع - بيع في الصيدلية للزبائن
   DISPENSE // صرف - صرف للمرضى في العيادة
   TRANSFER // تحويل - نقل بين المخازن
   ADJUST // تعديل - تصحيح المخزون (زيادة أو نقص)
@@ -2043,6 +2186,9 @@ model InvoiceTemplate {
   isDeleted         Boolean             @default(false)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("invoice_templates")
 }
@@ -2127,6 +2273,9 @@ model Sale {
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([saleType])
   @@index([status])

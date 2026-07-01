@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -18,7 +19,7 @@ import {
 
 @Injectable()
 export class WarehouseTransactionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   private transformTransaction(transaction: any): WarehouseTransaction {
     return new WarehouseTransaction({
@@ -93,7 +94,7 @@ export class WarehouseTransactionsService {
 
     // Validate all products exist
     const productIds = itemsToProcess.map((item) => item.productId);
-    const products = await this.prisma.product.findMany({
+    const products = await this.tenantPrisma.client.product.findMany({
       where: { id: { in: productIds } },
     });
 
@@ -128,7 +129,7 @@ export class WarehouseTransactionsService {
     });
 
     if (warehouseIds.size > 0) {
-      const warehouses = await this.prisma.warehouse.findMany({
+      const warehouses = await this.tenantPrisma.client.warehouse.findMany({
         where: { id: { in: Array.from(warehouseIds) } },
       });
 
@@ -152,7 +153,7 @@ export class WarehouseTransactionsService {
     }
 
     // Execute transaction
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await this.tenantPrisma.client.$transaction(async (tx) => {
       // Create the main transaction
       const transaction = await tx.warehouseTransaction.create({
         data: {
@@ -268,7 +269,7 @@ export class WarehouseTransactionsService {
       where.purchaseInvoiceId = invoiceId;
     }
 
-    return this.prisma.warehouseTransaction.findMany({
+    return this.tenantPrisma.client.warehouseTransaction.findMany({
       where,
       include: {
         items: {
@@ -444,7 +445,7 @@ export class WarehouseTransactionsService {
     }
 
     const [transactions, total] = await Promise.all([
-      this.prisma.warehouseTransaction.findMany({
+      this.tenantPrisma.client.warehouseTransaction.findMany({
         where,
         include: {
           items: {
@@ -470,7 +471,7 @@ export class WarehouseTransactionsService {
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.warehouseTransaction.count({ where }),
+      this.tenantPrisma.client.warehouseTransaction.count({ where }),
     ]);
 
     return {
@@ -487,7 +488,7 @@ export class WarehouseTransactionsService {
   }
 
   async findOne(id: number): Promise<WarehouseTransaction> {
-    const transaction = await this.prisma.warehouseTransaction.findUnique({
+    const transaction = await this.tenantPrisma.client.warehouseTransaction.findUnique({
       where: { id },
       include: {
         items: {
@@ -530,7 +531,7 @@ export class WarehouseTransactionsService {
     id: number,
     updateTransactionDto: UpdateWarehouseTransactionDto,
   ): Promise<WarehouseTransaction> {
-    const transaction = await this.prisma.warehouseTransaction.findUnique({
+    const transaction = await this.tenantPrisma.client.warehouseTransaction.findUnique({
       where: { id },
       include: {
         items: {
@@ -572,7 +573,7 @@ export class WarehouseTransactionsService {
       ),
     );
 
-    const updatedTransaction = await this.prisma.warehouseTransaction.update({
+    const updatedTransaction = await this.tenantPrisma.client.warehouseTransaction.update({
       where: { id },
       data: updateData,
       include: {
@@ -609,7 +610,7 @@ export class WarehouseTransactionsService {
   }
 
   async remove(id: number): Promise<void> {
-    const transaction = await this.prisma.warehouseTransaction.findUnique({
+    const transaction = await this.tenantPrisma.client.warehouseTransaction.findUnique({
       where: { id },
       include: {
         items: true,
@@ -621,7 +622,7 @@ export class WarehouseTransactionsService {
     }
 
     // حذف المعاملة مع عكس تأثيرها على المخزون
-    await this.prisma.$transaction(async (tx) => {
+    await this.tenantPrisma.client.$transaction(async (tx) => {
       // عكس تأثير المعاملة على المخزون لكل صنف
       for (const item of transaction.items) {
         await this.reverseStockQuantitiesForItem(tx, transaction, item);
@@ -637,11 +638,11 @@ export class WarehouseTransactionsService {
   async getTransactionStats() {
     const [totalTransactions, totalValue, transactionsByType] =
       await Promise.all([
-        this.prisma.warehouseTransaction.count(),
-        this.prisma.warehouseTransaction.aggregate({
+        this.tenantPrisma.client.warehouseTransaction.count(),
+        this.tenantPrisma.client.warehouseTransaction.aggregate({
           _sum: { totalPrice: true },
         }),
-        this.prisma.warehouseTransaction.groupBy({
+        this.tenantPrisma.client.warehouseTransaction.groupBy({
           by: ['type'],
           _count: { type: true },
           _sum: { totalPrice: true },
@@ -660,7 +661,7 @@ export class WarehouseTransactionsService {
   }
 
   async getProductTransactionHistory(productId: number, limit: number = 10) {
-    const transactions = await this.prisma.warehouseTransaction.findMany({
+    const transactions = await this.tenantPrisma.client.warehouseTransaction.findMany({
       where: {
         items: {
           some: {
@@ -709,7 +710,7 @@ export class WarehouseTransactionsService {
     warehouseId: number,
     limit: number = 10,
   ) {
-    const transactions = await this.prisma.warehouseTransaction.findMany({
+    const transactions = await this.tenantPrisma.client.warehouseTransaction.findMany({
       where: {
         OR: [{ fromWarehouseId: warehouseId }, { toWarehouseId: warehouseId }],
       },
@@ -755,7 +756,7 @@ export class WarehouseTransactionsService {
     const endDate = new Date(date);
     endDate.setDate(endDate.getDate() + 1);
 
-    const transactions = await this.prisma.warehouseTransaction.findMany({
+    const transactions = await this.tenantPrisma.client.warehouseTransaction.findMany({
       where: {
         createdAt: {
           gte: startDate,
@@ -873,7 +874,7 @@ export class WarehouseTransactionsService {
   ): Promise<void> {
     // إذا لم يتم تحديد الوحدة، نحاول الحصول على الوحدة الافتراضية للمنتج
     if (!unitId) {
-      const product = await this.prisma.product.findUnique({
+      const product = await this.tenantPrisma.client.product.findUnique({
         where: { id: productId },
         include: { salesUnit: true, purchaseUnit: true },
       });
@@ -883,7 +884,7 @@ export class WarehouseTransactionsService {
         unitId = product.salesUnitId || product.purchaseUnitId || undefined;
       }
     }
-    const stock = await this.prisma.stock.findFirst({
+    const stock = await this.tenantPrisma.client.stock.findFirst({
       where: { productId, warehouseId },
       include: {
         trackings: {
@@ -900,7 +901,7 @@ export class WarehouseTransactionsService {
     // الحصول على الوحدة المستخدمة في الحركة
     let transactionUnit: any = null;
     if (unitId) {
-      transactionUnit = await this.prisma.unit.findUnique({
+      transactionUnit = await this.tenantPrisma.client.unit.findUnique({
         where: { id: unitId },
       });
       if (!transactionUnit) {

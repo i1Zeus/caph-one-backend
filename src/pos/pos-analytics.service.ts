@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnalyticsQueryDto } from './dto';
@@ -42,7 +43,7 @@ export interface ProductSalesDetail {
 
 @Injectable()
 export class PosAnalyticsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   /**
    * Get top products by sales volume/revenue
@@ -74,7 +75,7 @@ export class PosAnalyticsService {
     }
 
     // Get all invoice items matching the criteria
-    const items = await this.prisma.salesInvoiceItem.findMany({
+    const items = await this.tenantPrisma.client.salesInvoiceItem.findMany({
       where: {
         invoice: invoiceWhere,
       },
@@ -175,7 +176,7 @@ export class PosAnalyticsService {
     }
 
     // Get all invoices with cashier info
-    const invoices = await this.prisma.salesInvoice.findMany({
+    const invoices = await this.tenantPrisma.client.salesInvoice.findMany({
       where,
       select: {
         cashierId: true,
@@ -269,7 +270,7 @@ export class PosAnalyticsService {
     }
 
     // Get all invoices with cashier info
-    const invoices = await this.prisma.salesInvoice.findMany({
+    const invoices = await this.tenantPrisma.client.salesInvoice.findMany({
       where,
       select: {
         cashierId: true,
@@ -362,7 +363,7 @@ export class PosAnalyticsService {
     }
 
     // Get all invoice items matching the criteria
-    const items = await this.prisma.salesInvoiceItem.findMany({
+    const items = await this.tenantPrisma.client.salesInvoiceItem.findMany({
       where: {
         invoice: invoiceWhere,
       },

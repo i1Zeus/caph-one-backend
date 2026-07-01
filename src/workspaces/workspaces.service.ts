@@ -16,10 +16,13 @@ import {
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { Workspace } from './entities/workspace.entity';
 
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
+
 @Injectable()
 export class WorkspacesService {
   constructor(
     private prisma: PrismaService,
+    private tenantPrisma: TenantPrismaService,
     private permissionsService: DynamicPermissionsService,
   ) {}
 
@@ -27,11 +30,40 @@ export class WorkspacesService {
     createWorkspaceDto: CreateWorkspaceDto,
     ownerId: string,
   ): Promise<Workspace> {
+    // 1. Fetch user's organization and check workspace quota
+    const user = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { organizationId: true, isSuperAdmin: true },
+    });
+
+    if (user && !user.isSuperAdmin && user.organizationId) {
+      const org = await this.prisma.organization.findUnique({
+        where: { id: user.organizationId },
+        select: { maxWorkspaces: true },
+      });
+
+      if (org) {
+        const workspaceCount = await this.prisma.workspace.count({
+          where: {
+            organizationId: user.organizationId,
+            isDeleted: false,
+          },
+        });
+
+        if (workspaceCount >= org.maxWorkspaces) {
+          throw new ForbiddenException(
+            `Workspace limit reached for your organization (max ${org.maxWorkspaces}). Contact administrator.`,
+          );
+        }
+      }
+    }
+
     try {
       // Check if slug already exists
-      const existingWorkspace = await this.prisma.workspace.findUnique({
-        where: { slug: createWorkspaceDto.slug },
-      });
+      const existingWorkspace =
+        await this.tenantPrisma.client.workspace.findUnique({
+          where: { slug: createWorkspaceDto.slug },
+        });
 
       if (existingWorkspace) {
         throw new BadRequestException('Workspace slug already exists');
@@ -338,7 +370,7 @@ export class WorkspacesService {
 
       return workspace;
     } catch (error) {
-      throw new BadRequestException('Failed to update workspace');
+      throw new BadRequestException(error, 'Failed to update workspace');
     }
   }
 
@@ -441,7 +473,7 @@ export class WorkspacesService {
         message: `${removeMembersDto.userIds.length} member(s) removed successfully`,
       };
     } catch (error) {
-      throw new BadRequestException('Failed to remove members');
+      throw new BadRequestException(error, 'Failed to remove members');
     }
   }
 
@@ -487,7 +519,7 @@ export class WorkspacesService {
 
       return { message: 'Member role updated successfully' };
     } catch (error) {
-      throw new BadRequestException('Failed to update member role');
+      throw new BadRequestException(error, 'Failed to update member role');
     }
   }
 
@@ -506,7 +538,7 @@ export class WorkspacesService {
 
       return { message: `Workspace has been deleted` };
     } catch (error) {
-      throw new BadRequestException('Failed to delete workspace');
+      throw new BadRequestException(error, 'Failed to delete workspace');
     }
   }
 

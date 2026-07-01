@@ -1,6 +1,7 @@
 import { LeadStage as PrismaLeadStage } from '@prisma/client';
 
 export class LeadStage implements PrismaLeadStage {
+  organizationId: string;
   id: string;
   name: string;
   description: string | null;

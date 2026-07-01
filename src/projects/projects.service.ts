@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -17,14 +18,14 @@ import { Project } from './entities/project.entity';
 @Injectable()
 export class ProjectsService {
   constructor(
-    private prisma: PrismaService,
+    private prisma: PrismaService, private tenantPrisma: TenantPrismaService,
     private permissionsService: DynamicPermissionsService,
   ) {}
 
   async create(createProjectDto: CreateProjectDto): Promise<Project> {
     try {
       // Verify that the owner exists
-      const owner = await this.prisma.user.findUnique({
+      const owner = await this.tenantPrisma.client.user.findUnique({
         where: { id: createProjectDto.ownerId },
       });
 
@@ -35,7 +36,7 @@ export class ProjectsService {
       // Determine order if not provided
       let order = createProjectDto.order;
       if (order === undefined && createProjectDto.projectStageId) {
-        const maxOrderProject = await this.prisma.project.findFirst({
+        const maxOrderProject = await this.tenantPrisma.client.project.findFirst({
           where: {
             projectStageId: createProjectDto.projectStageId,
             isDeleted: false,
@@ -47,7 +48,7 @@ export class ProjectsService {
       }
 
       // Verify workspace exists
-      const workspace = await this.prisma.workspace.findUnique({
+      const workspace = await this.tenantPrisma.client.workspace.findUnique({
         where: { id: createProjectDto.workspaceId },
       });
 
@@ -55,7 +56,7 @@ export class ProjectsService {
         throw new BadRequestException('Workspace not found');
       }
 
-      const project = await this.prisma.project.create({
+      const project = await this.tenantPrisma.client.project.create({
         data: {
           name: createProjectDto.name,
           description: createProjectDto.description,
@@ -127,7 +128,7 @@ export class ProjectsService {
 
     // If user has admin access, return all projects (optionally filtered by workspace)
     if (hasAdminAccess) {
-      const projects = await this.prisma.project.findMany({
+      const projects = await this.tenantPrisma.client.project.findMany({
         where: {
           isDeleted: false,
           ...workspaceFilter,
@@ -193,7 +194,7 @@ export class ProjectsService {
     }
 
     // For non-admin users, only return projects they contribute to or own (optionally filtered by workspace)
-    const projects = await this.prisma.project.findMany({
+    const projects = await this.tenantPrisma.client.project.findMany({
       where: {
         isDeleted: false,
         ...workspaceFilter,
@@ -384,7 +385,7 @@ export class ProjectsService {
 
     // Execute queries in parallel
     const [projects, total] = await Promise.all([
-      this.prisma.project.findMany({
+      this.tenantPrisma.client.project.findMany({
         where: whereClause,
         include: {
           owner: {
@@ -420,7 +421,7 @@ export class ProjectsService {
         skip,
         take: limit,
       }),
-      this.prisma.project.count({
+      this.tenantPrisma.client.project.count({
         where: whereClause,
       }),
     ]);
@@ -477,7 +478,7 @@ export class ProjectsService {
       ];
     }
 
-    const project = await this.prisma.project.findFirst({
+    const project = await this.tenantPrisma.client.project.findFirst({
       where: whereClause,
       include: {
         owner: {
@@ -545,7 +546,7 @@ export class ProjectsService {
     updateProjectDto: UpdateProjectDto,
   ): Promise<Project> {
     // Check if project exists
-    const existingProject = await this.prisma.project.findFirst({
+    const existingProject = await this.tenantPrisma.client.project.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -559,7 +560,7 @@ export class ProjectsService {
     try {
       // If updating ownerId, verify the new owner exists
       if (updateProjectDto.ownerId) {
-        const owner = await this.prisma.user.findUnique({
+        const owner = await this.tenantPrisma.client.user.findUnique({
           where: { id: updateProjectDto.ownerId },
         });
 
@@ -568,7 +569,7 @@ export class ProjectsService {
         }
       }
 
-      const project = await this.prisma.project.update({
+      const project = await this.tenantPrisma.client.project.update({
         where: { id },
         data: updateProjectDto,
         include: {
@@ -620,7 +621,7 @@ export class ProjectsService {
     addContributorsDto: AddContributorsDto,
   ): Promise<Project> {
     // Check if project exists
-    const existingProject = await this.prisma.project.findFirst({
+    const existingProject = await this.tenantPrisma.client.project.findFirst({
       where: {
         id: projectId,
         isDeleted: false,
@@ -639,7 +640,7 @@ export class ProjectsService {
     }
 
     // Verify all users exist
-    const users = await this.prisma.user.findMany({
+    const users = await this.tenantPrisma.client.user.findMany({
       where: {
         id: { in: addContributorsDto.userIds },
         isDeleted: false,
@@ -665,7 +666,7 @@ export class ProjectsService {
     }
 
     try {
-      const project = await this.prisma.project.update({
+      const project = await this.tenantPrisma.client.project.update({
         where: { id: projectId },
         data: {
           contributors: {
@@ -707,7 +708,7 @@ export class ProjectsService {
     removeContributorsDto: RemoveContributorsDto,
   ): Promise<Project> {
     // Check if project exists
-    const existingProject = await this.prisma.project.findFirst({
+    const existingProject = await this.tenantPrisma.client.project.findFirst({
       where: {
         id: projectId,
         isDeleted: false,
@@ -740,7 +741,7 @@ export class ProjectsService {
     }
 
     try {
-      const project = await this.prisma.project.update({
+      const project = await this.tenantPrisma.client.project.update({
         where: { id: projectId },
         data: {
           contributors: {
@@ -783,7 +784,7 @@ export class ProjectsService {
     try {
       // Validate all projects exist and get their current data
       const projectIds = reorderProjectsDto.projects.map((p) => p.id);
-      const existingProjects = await this.prisma.project.findMany({
+      const existingProjects = await this.tenantPrisma.client.project.findMany({
         where: {
           id: { in: projectIds },
           isDeleted: false,
@@ -800,7 +801,7 @@ export class ProjectsService {
 
       // Update each project's order and stage
       const updatePromises = reorderProjectsDto.projects.map((projectOrder) =>
-        this.prisma.project.update({
+        this.tenantPrisma.client.project.update({
           where: { id: projectOrder.id },
           data: {
             order: projectOrder.order,
@@ -822,7 +823,7 @@ export class ProjectsService {
 
   async remove(id: string): Promise<{ message: string }> {
     // Check if project exists
-    const existingProject = await this.prisma.project.findFirst({
+    const existingProject = await this.tenantPrisma.client.project.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -835,7 +836,7 @@ export class ProjectsService {
 
     try {
       // Soft delete the project
-      await this.prisma.project.update({
+      await this.tenantPrisma.client.project.update({
         where: { id },
         data: {
           isDeleted: true,
@@ -849,7 +850,7 @@ export class ProjectsService {
   }
 
   async findByOwner(ownerId: string): Promise<Project[]> {
-    const projects = await this.prisma.project.findMany({
+    const projects = await this.tenantPrisma.client.project.findMany({
       where: {
         ownerId,
         isDeleted: false,
@@ -885,7 +886,7 @@ export class ProjectsService {
   async getProjectStats(id: string, userId?: string) {
     const project = await this.findOne(id, userId);
 
-    const stats = await this.prisma.project.findUnique({
+    const stats = await this.tenantPrisma.client.project.findUnique({
       where: { id },
       select: {
         _count: {
@@ -941,7 +942,7 @@ export class ProjectsService {
   ): Promise<Project> {
     try {
       // Get the original project with all necessary data
-      const originalProject = await this.prisma.project.findUnique({
+      const originalProject = await this.tenantPrisma.client.project.findUnique({
         where: { id: projectId, isDeleted: false },
         include: {
           owner: {
@@ -994,7 +995,7 @@ export class ProjectsService {
       }
 
       // Verify workspace exists
-      const workspace = await this.prisma.workspace.findUnique({
+      const workspace = await this.tenantPrisma.client.workspace.findUnique({
         where: { id: workspaceId },
       });
 
@@ -1005,7 +1006,7 @@ export class ProjectsService {
       // Determine order for the new project
       let order = 0;
       if (originalProject.projectStageId) {
-        const maxOrderProject = await this.prisma.project.findFirst({
+        const maxOrderProject = await this.tenantPrisma.client.project.findFirst({
           where: {
             projectStageId: originalProject.projectStageId,
             isDeleted: false,
@@ -1017,7 +1018,7 @@ export class ProjectsService {
       }
 
       // Create the duplicated project
-      const duplicatedProject = await this.prisma.project.create({
+      const duplicatedProject = await this.tenantPrisma.client.project.create({
         data: {
           name: `${originalProject.name} (Copy)`,
           description: originalProject.description,
@@ -1073,7 +1074,7 @@ export class ProjectsService {
       ) {
         const taskStagePromises = originalProject.taskStages.map(
           (taskStage, index) =>
-            this.prisma.taskStage.create({
+            this.tenantPrisma.client.taskStage.create({
               data: {
                 name: taskStage.name,
                 description: taskStage.description,

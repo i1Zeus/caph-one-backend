@@ -1,10 +1,11 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceReportData, AttendanceReportDto } from './dto';
 
 @Injectable()
 export class ReportsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async generateAttendanceReport(
     dto: AttendanceReportDto,
@@ -25,7 +26,7 @@ export class ReportsService {
     }
 
     // Get all employees
-    const employees = await this.prisma.employee.findMany({
+    const employees = await this.tenantPrisma.client.employee.findMany({
       where: employeeWhere,
       include: {
         job: true,

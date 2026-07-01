@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -15,7 +16,7 @@ import {
 export class TransactionsService {
   private readonly logger = new Logger(TransactionsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createTransactionDto: CreateTransactionDto, userId?: string) {
     try {
@@ -40,7 +41,7 @@ export class TransactionsService {
       const accountIds = createTransactionDto.entries.map(
         (entry) => entry.accountId,
       );
-      const accounts = await this.prisma.account.findMany({
+      const accounts = await this.tenantPrisma.client.account.findMany({
         where: {
           id: { in: accountIds },
           isDeleted: false,
@@ -53,7 +54,7 @@ export class TransactionsService {
 
       // Validate client exists if provided
       if (createTransactionDto.clientId) {
-        const client = await this.prisma.client.findUnique({
+        const client = await this.tenantPrisma.client.client.findUnique({
           where: { id: createTransactionDto.clientId },
         });
         if (!client) {
@@ -61,7 +62,7 @@ export class TransactionsService {
         }
       }
 
-      const transaction = await this.prisma.transaction.create({
+      const transaction = await this.tenantPrisma.client.transaction.create({
         data: {
           date: createTransactionDto.date
             ? new Date(createTransactionDto.date)
@@ -154,7 +155,7 @@ export class TransactionsService {
       }
 
       const [transactions, total] = await Promise.all([
-        this.prisma.transaction.findMany({
+        this.tenantPrisma.client.transaction.findMany({
           where,
           include: {
             entries: {
@@ -198,7 +199,7 @@ export class TransactionsService {
           skip,
           take: limit,
         }),
-        this.prisma.transaction.count({ where }),
+        this.tenantPrisma.client.transaction.count({ where }),
       ]);
 
       return {
@@ -218,7 +219,7 @@ export class TransactionsService {
 
   async findOne(id: number) {
     try {
-      const transaction = await this.prisma.transaction.findUnique({
+      const transaction = await this.tenantPrisma.client.transaction.findUnique({
         where: {
           id,
           isDeleted: false,
@@ -312,7 +313,7 @@ export class TransactionsService {
         const accountIds = updateTransactionDto.entries.map(
           (entry) => entry.accountId,
         );
-        const accounts = await this.prisma.account.findMany({
+        const accounts = await this.tenantPrisma.client.account.findMany({
           where: {
             id: { in: accountIds },
             isDeleted: false,
@@ -324,7 +325,7 @@ export class TransactionsService {
         }
       }
 
-      const transaction = await this.prisma.transaction.update({
+      const transaction = await this.tenantPrisma.client.transaction.update({
         where: { id },
         data: {
           date: updateTransactionDto.date
@@ -378,7 +379,7 @@ export class TransactionsService {
       // const transaction = await this.findOne(id);
 
       // Soft delete the transaction
-      await this.prisma.transaction.update({
+      await this.tenantPrisma.client.transaction.update({
         where: { id },
         data: { isDeleted: true },
       });
@@ -409,8 +410,8 @@ export class TransactionsService {
       }
 
       const [totalTransactions, totalDebits, totalCredits] = await Promise.all([
-        this.prisma.transaction.count({ where }),
-        this.prisma.transactionLine.aggregate({
+        this.tenantPrisma.client.transaction.count({ where }),
+        this.tenantPrisma.client.transactionLine.aggregate({
           where: {
             transaction: where,
           },
@@ -418,7 +419,7 @@ export class TransactionsService {
             debit: true,
           },
         }),
-        this.prisma.transactionLine.aggregate({
+        this.tenantPrisma.client.transactionLine.aggregate({
           where: {
             transaction: where,
           },
@@ -457,7 +458,7 @@ export class TransactionsService {
         where.transaction.date = { lte: asOfDate };
       }
 
-      const result = await this.prisma.transactionLine.aggregate({
+      const result = await this.tenantPrisma.client.transactionLine.aggregate({
         where,
         _sum: {
           debit: true,
@@ -490,7 +491,7 @@ export class TransactionsService {
       const skip = (page - 1) * limit;
 
       const [transactions, total] = await Promise.all([
-        this.prisma.transaction.findMany({
+        this.tenantPrisma.client.transaction.findMany({
           where: {
             isDeleted: false,
             entries: {
@@ -530,7 +531,7 @@ export class TransactionsService {
           skip,
           take: limit,
         }),
-        this.prisma.transaction.count({
+        this.tenantPrisma.client.transaction.count({
           where: {
             isDeleted: false,
             entries: {
@@ -584,7 +585,7 @@ export class TransactionsService {
 
   async getAccountsWithBalances() {
     try {
-      const accounts = await this.prisma.account.findMany({
+      const accounts = await this.tenantPrisma.client.account.findMany({
         where: { isDeleted: false },
         include: {
           entries: {

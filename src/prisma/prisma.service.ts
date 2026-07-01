@@ -1,4 +1,9 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
@@ -45,5 +50,168 @@ export class PrismaService
   }
   async onModuleDestroy() {
     await this.$disconnect();
+  }
+
+  forTenant(tenantId: string | null, isSuperAdmin: boolean): any {
+    if (isSuperAdmin || !tenantId) {
+      return this;
+    }
+
+    const self = this;
+
+    const modelsWithOrg = new Set([
+      'Workspace',
+      'User',
+      'Client',
+      'Currency',
+      'Account',
+      'Transaction',
+      'AccountingSettings',
+      'InvoiceAccountingConfig',
+      'Department',
+      'Employee',
+      'Job',
+      'Product',
+      'ProductCategory',
+      'UnitCategory',
+      'Unit',
+      'Warehouse',
+      'WarehouseTransaction',
+      'SalesInvoice',
+      'PurchaseInvoice',
+      'PurchaseReturnInvoice',
+      'SalesReturnInvoice',
+      'POS',
+      'InvoiceTemplate',
+      'Sale',
+      'Lead',
+      'LeadStage',
+      'ActionHistory',
+      'LoginEvent',
+    ]);
+
+    return this.$extends({
+      query: {
+        $allModels: {
+          async findMany({ model, args, query }) {
+            if (modelsWithOrg.has(model)) {
+              (args as any).where = {
+                ...(args as any).where,
+                organizationId: tenantId,
+              };
+            }
+            return query(args);
+          },
+          async findFirst({ model, args, query }) {
+            if (modelsWithOrg.has(model)) {
+              (args as any).where = {
+                ...(args as any).where,
+                organizationId: tenantId,
+              };
+            }
+            return query(args);
+          },
+          async findUnique({ model, args, query }) {
+            const result = await query(args);
+            if (
+              result &&
+              modelsWithOrg.has(model) &&
+              (result as any).organizationId !== tenantId
+            ) {
+              return null;
+            }
+            return result;
+          },
+          async create({ model, args, query }) {
+            if (modelsWithOrg.has(model)) {
+              (args as any).data = {
+                ...(args as any).data,
+                organizationId: tenantId,
+              };
+            }
+            return query(args);
+          },
+          async update({ model, args, query }) {
+            if (modelsWithOrg.has(model)) {
+              const dbName = model.charAt(0).toLowerCase() + model.slice(1);
+              const db = (self as any)[dbName];
+              if (db) {
+                const count = await db.count({
+                  where: { ...(args as any).where, organizationId: tenantId },
+                });
+                if (count === 0) {
+                  throw new ForbiddenException(
+                    'Record not found or access denied.',
+                  );
+                }
+              }
+            }
+            return query(args);
+          },
+          async updateMany({ model, args, query }) {
+            if (modelsWithOrg.has(model)) {
+              (args as any).where = {
+                ...(args as any).where,
+                organizationId: tenantId,
+              };
+            }
+            return query(args);
+          },
+          async delete({ model, args, query }) {
+            if (modelsWithOrg.has(model)) {
+              const dbName = model.charAt(0).toLowerCase() + model.slice(1);
+              const db = (self as any)[dbName];
+              if (db) {
+                const count = await db.count({
+                  where: { ...(args as any).where, organizationId: tenantId },
+                });
+                if (count === 0) {
+                  throw new ForbiddenException(
+                    'Record not found or access denied.',
+                  );
+                }
+              }
+            }
+            return query(args);
+          },
+          async deleteMany({ model, args, query }) {
+            if (modelsWithOrg.has(model)) {
+              (args as any).where = {
+                ...(args as any).where,
+                organizationId: tenantId,
+              };
+            }
+            return query(args);
+          },
+          async count({ model, args, query }) {
+            if (modelsWithOrg.has(model)) {
+              (args as any).where = {
+                ...(args as any).where,
+                organizationId: tenantId,
+              };
+            }
+            return query(args);
+          },
+          async aggregate({ model, args, query }) {
+            if (modelsWithOrg.has(model)) {
+              (args as any).where = {
+                ...(args as any).where,
+                organizationId: tenantId,
+              };
+            }
+            return query(args);
+          },
+          async groupBy({ model, args, query }) {
+            if (modelsWithOrg.has(model)) {
+              (args as any).where = {
+                ...(args as any).where,
+                organizationId: tenantId,
+              };
+            }
+            return query(args);
+          },
+        },
+      },
+    }) as any;
   }
 }

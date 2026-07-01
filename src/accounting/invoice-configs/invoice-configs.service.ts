@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -11,7 +12,7 @@ import {
 export class InvoiceConfigsService {
   private readonly logger = new Logger(InvoiceConfigsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createInvoiceConfigDto: CreateInvoiceConfigDto) {
     const {
@@ -26,8 +27,8 @@ export class InvoiceConfigsService {
 
     // التحقق من وجود الحسابات
     const [debitAccount, creditAccount] = await Promise.all([
-      this.prisma.account.findUnique({ where: { id: debitAccountId } }),
-      this.prisma.account.findUnique({ where: { id: creditAccountId } }),
+      this.tenantPrisma.client.account.findUnique({ where: { id: debitAccountId } }),
+      this.tenantPrisma.client.account.findUnique({ where: { id: creditAccountId } }),
     ]);
 
     if (!debitAccount) {
@@ -41,7 +42,7 @@ export class InvoiceConfigsService {
     // Note: Name uniqueness is not enforced at database level
     // You can optionally check for duplicates here if needed
 
-    return this.prisma.invoiceAccountingConfig.create({
+    return this.tenantPrisma.client.invoiceAccountingConfig.create({
       data: {
         name,
         invoiceType: invoiceType as any,
@@ -59,7 +60,7 @@ export class InvoiceConfigsService {
   }
 
   async findAll() {
-    return this.prisma.invoiceAccountingConfig.findMany({
+    return this.tenantPrisma.client.invoiceAccountingConfig.findMany({
       where: { isDeleted: false },
       include: {
         debitAccount: true,
@@ -70,7 +71,7 @@ export class InvoiceConfigsService {
   }
 
   async findOne(id: number) {
-    const config = await this.prisma.invoiceAccountingConfig.findUnique({
+    const config = await this.tenantPrisma.client.invoiceAccountingConfig.findUnique({
       where: { id },
       include: {
         debitAccount: true,
@@ -92,7 +93,7 @@ export class InvoiceConfigsService {
     console.log('=== SEARCHING FOR CONFIG ===');
     console.log('Search params:', { invoiceType, paymentType });
 
-    const config = await this.prisma.invoiceAccountingConfig.findFirst({
+    const config = await this.tenantPrisma.client.invoiceAccountingConfig.findFirst({
       where: {
         invoiceType: invoiceType as any,
         paymentType: paymentType as any,
@@ -124,7 +125,7 @@ export class InvoiceConfigsService {
 
     // التحقق من الحسابات الجديدة إذا تم تغييرها
     if (debitAccountId && debitAccountId !== config.debitAccountId) {
-      const debitAccount = await this.prisma.account.findUnique({
+      const debitAccount = await this.tenantPrisma.client.account.findUnique({
         where: { id: debitAccountId },
       });
       if (!debitAccount) {
@@ -133,7 +134,7 @@ export class InvoiceConfigsService {
     }
 
     if (creditAccountId && creditAccountId !== config.creditAccountId) {
-      const creditAccount = await this.prisma.account.findUnique({
+      const creditAccount = await this.tenantPrisma.client.account.findUnique({
         where: { id: creditAccountId },
       });
       if (!creditAccount) {
@@ -144,7 +145,7 @@ export class InvoiceConfigsService {
     // Note: Name uniqueness is not enforced at database level
     // You can optionally check for duplicates here if needed
 
-    return this.prisma.invoiceAccountingConfig.update({
+    return this.tenantPrisma.client.invoiceAccountingConfig.update({
       where: { id },
       data: updateInvoiceConfigDto as any,
       include: {
@@ -157,7 +158,7 @@ export class InvoiceConfigsService {
   async remove(id: number) {
     // const config = await this.findOne(id);
 
-    return this.prisma.invoiceAccountingConfig.update({
+    return this.tenantPrisma.client.invoiceAccountingConfig.update({
       where: { id },
       data: { isDeleted: true },
     });
@@ -188,7 +189,7 @@ export class InvoiceConfigsService {
       config.creditAccountId,
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.tenantPrisma.client.$transaction(async (tx) => {
       // إنشاء المعاملة (بدون ربط الفاتورة في البداية)
       const transaction = await tx.transaction.create({
         data: {
@@ -267,7 +268,7 @@ export class InvoiceConfigsService {
 
   // دالة مساعدة للبحث عن تكوين بواسطة المعرف
   async findById(id: number) {
-    const config = await this.prisma.invoiceAccountingConfig.findUnique({
+    const config = await this.tenantPrisma.client.invoiceAccountingConfig.findUnique({
       where: { id },
       include: {
         debitAccount: true,
@@ -299,7 +300,7 @@ export class InvoiceConfigsService {
       config.creditAccountId,
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.tenantPrisma.client.$transaction(async (tx) => {
       // إنشاء المعاملة (بدون ربط الفاتورة في البداية)
       const transaction = await tx.transaction.create({
         data: {

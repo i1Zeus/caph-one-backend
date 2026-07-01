@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -12,7 +13,7 @@ import { ProjectStage } from '../entities/project-stage.entity';
 @Injectable()
 export class ProjectStagesService {
   constructor(
-    private prisma: PrismaService,
+    private prisma: PrismaService, private tenantPrisma: TenantPrismaService,
     private dynamicPermissionsService: DynamicPermissionsService,
   ) {}
 
@@ -21,7 +22,7 @@ export class ProjectStagesService {
   ): Promise<ProjectStage> {
     try {
       // Verify workspace exists
-      const workspace = await this.prisma.workspace.findUnique({
+      const workspace = await this.tenantPrisma.client.workspace.findUnique({
         where: { id: createProjectStageDto.workspaceId },
       });
 
@@ -32,7 +33,7 @@ export class ProjectStagesService {
       // Determine order if not provided (within the workspace)
       let order = createProjectStageDto.order;
       if (order === undefined) {
-        const maxOrderStage = await this.prisma.projectStage.findFirst({
+        const maxOrderStage = await this.tenantPrisma.client.projectStage.findFirst({
           where: {
             workspaceId: createProjectStageDto.workspaceId,
             isDeleted: false,
@@ -43,7 +44,7 @@ export class ProjectStagesService {
         order = (maxOrderStage?.order ?? -1) + 1;
       }
 
-      const projectStage = await this.prisma.projectStage.create({
+      const projectStage = await this.tenantPrisma.client.projectStage.create({
         data: {
           name: createProjectStageDto.name,
           description: createProjectStageDto.description,
@@ -83,7 +84,7 @@ export class ProjectStagesService {
       whereClause.workspaceId = workspaceId;
     }
 
-    const projectStages = await this.prisma.projectStage.findMany({
+    const projectStages = await this.tenantPrisma.client.projectStage.findMany({
       where: whereClause,
       include: {
         workspace: {
@@ -106,7 +107,7 @@ export class ProjectStagesService {
   }
 
   async findOne(id: string): Promise<ProjectStage> {
-    const projectStage = await this.prisma.projectStage.findFirst({
+    const projectStage = await this.tenantPrisma.client.projectStage.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -150,7 +151,7 @@ export class ProjectStagesService {
     updateProjectStageDto: UpdateProjectStageDto,
   ): Promise<ProjectStage> {
     // Check if project stage exists
-    const existingProjectStage = await this.prisma.projectStage.findFirst({
+    const existingProjectStage = await this.tenantPrisma.client.projectStage.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -162,7 +163,7 @@ export class ProjectStagesService {
     }
 
     try {
-      const projectStage = await this.prisma.projectStage.update({
+      const projectStage = await this.tenantPrisma.client.projectStage.update({
         where: { id },
         data: updateProjectStageDto,
       });
@@ -175,7 +176,7 @@ export class ProjectStagesService {
 
   async remove(id: string): Promise<{ message: string }> {
     // Check if project stage exists
-    const existingProjectStage = await this.prisma.projectStage.findFirst({
+    const existingProjectStage = await this.tenantPrisma.client.projectStage.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -187,7 +188,7 @@ export class ProjectStagesService {
     }
 
     // Check if any projects are using this stage
-    const projectsUsingStage = await this.prisma.project.findFirst({
+    const projectsUsingStage = await this.tenantPrisma.client.project.findFirst({
       where: {
         projectStageId: id,
         isDeleted: false,
@@ -202,7 +203,7 @@ export class ProjectStagesService {
 
     try {
       // Soft delete the project stage
-      await this.prisma.projectStage.update({
+      await this.tenantPrisma.client.projectStage.update({
         where: { id },
         data: {
           isDeleted: true,
@@ -216,7 +217,7 @@ export class ProjectStagesService {
   }
 
   async getStageWithProjectCounts(id: string): Promise<any> {
-    const projectStage = await this.prisma.projectStage.findFirst({
+    const projectStage = await this.tenantPrisma.client.projectStage.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -376,7 +377,7 @@ export class ProjectStagesService {
     }
 
     // Get stages with their projects
-    const stages = await this.prisma.projectStage.findMany({
+    const stages = await this.tenantPrisma.client.projectStage.findMany({
       where: {
         workspaceId: workspaceId,
         isDeleted: false,
@@ -434,7 +435,7 @@ export class ProjectStagesService {
     });
 
     // Get unstaged projects (projects without a stage in this workspace)
-    const unstagedProjects = await this.prisma.project.findMany({
+    const unstagedProjects = await this.tenantPrisma.client.project.findMany({
       where: {
         ...projectWhereClause,
         projectStageId: null,
@@ -543,7 +544,7 @@ export class ProjectStagesService {
       }
 
       // Get the workspace ID from the first stage to find all stages in that workspace
-      const firstStage = await this.prisma.projectStage.findUnique({
+      const firstStage = await this.tenantPrisma.client.projectStage.findUnique({
         where: { id: stages[0].id },
         select: { workspaceId: true },
       });
@@ -553,13 +554,13 @@ export class ProjectStagesService {
       }
 
       // Get all stages in the workspace (including deleted) to handle unique constraint properly
-      const allStagesInWorkspace = await this.prisma.projectStage.findMany({
+      const allStagesInWorkspace = await this.tenantPrisma.client.projectStage.findMany({
         where: { workspaceId: firstStage.workspaceId },
         select: { id: true, order: true, isDeleted: true },
       });
 
       // Use a four-step transaction to avoid unique constraint conflicts
-      await this.prisma.$transaction(async (prisma) => {
+      await this.tenantPrisma.client.$transaction(async (prisma) => {
         // Step 1: Set ALL stages in the workspace to negative temporary order values
         const baseOffset = -1000000;
         for (let i = 0; i < allStagesInWorkspace.length; i++) {

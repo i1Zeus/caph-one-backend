@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -10,14 +11,14 @@ import { SessionSummary } from './entities';
 
 @Injectable()
 export class PosSessionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   /**
    * Open a new POS session
    */
   async openSession(dto: OpenSessionDto) {
     // Check if POS terminal exists and is active
-    const pos = await this.prisma.pOS.findUnique({
+    const pos = await this.tenantPrisma.client.pOS.findUnique({
       where: { id: dto.posId },
     });
 
@@ -30,7 +31,7 @@ export class PosSessionsService {
     }
 
     // Check if employee exists and has POS access
-    const employee = await this.prisma.employee.findUnique({
+    const employee = await this.tenantPrisma.client.employee.findUnique({
       where: { id: dto.employeeId },
     });
 
@@ -43,7 +44,7 @@ export class PosSessionsService {
     }
 
     // Check if there's already an open session for this POS
-    const existingSession = await this.prisma.pOSSession.findFirst({
+    const existingSession = await this.tenantPrisma.client.pOSSession.findFirst({
       where: {
         posId: dto.posId,
         status: 'OPEN',
@@ -56,7 +57,7 @@ export class PosSessionsService {
     }
 
     // Generate session number by counting existing sessions for this POS terminal
-    const sessionCount = await this.prisma.pOSSession.count({
+    const sessionCount = await this.tenantPrisma.client.pOSSession.count({
       where: {
         posId: dto.posId,
         isDeleted: false,
@@ -66,7 +67,7 @@ export class PosSessionsService {
     const sessionNumber = (sessionCount + 1).toString().padStart(3, '0');
 
     // Create new session
-    const session = await this.prisma.pOSSession.create({
+    const session = await this.tenantPrisma.client.pOSSession.create({
       data: {
         posId: dto.posId,
         employeeId: dto.employeeId,
@@ -94,7 +95,7 @@ export class PosSessionsService {
    * Close a POS session
    */
   async closeSession(sessionId: number, dto: CloseSessionDto) {
-    const session = await this.prisma.pOSSession.findUnique({
+    const session = await this.tenantPrisma.client.pOSSession.findUnique({
       where: { id: sessionId },
       include: {
         invoices: {
@@ -123,7 +124,7 @@ export class PosSessionsService {
     const cashDifference = dto.closingBalance - expectedCash;
 
     // Update session
-    const closedSession = await this.prisma.pOSSession.update({
+    const closedSession = await this.tenantPrisma.client.pOSSession.update({
       where: { id: sessionId },
       data: {
         status: 'CLOSED',
@@ -152,7 +153,7 @@ export class PosSessionsService {
    * Get active session for a POS terminal
    */
   async getActiveSession(posId: number) {
-    const session = await this.prisma.pOSSession.findFirst({
+    const session = await this.tenantPrisma.client.pOSSession.findFirst({
       where: {
         posId,
         status: 'OPEN',
@@ -177,7 +178,7 @@ export class PosSessionsService {
    * Get session details by ID
    */
   async getSession(sessionId: number) {
-    const session = await this.prisma.pOSSession.findUnique({
+    const session = await this.tenantPrisma.client.pOSSession.findUnique({
       where: { id: sessionId },
       include: {
         pos: true,
@@ -271,7 +272,7 @@ export class PosSessionsService {
    */
   async getSessionFilterOptions() {
     const [terminals, employees] = await Promise.all([
-      this.prisma.pOS.findMany({
+      this.tenantPrisma.client.pOS.findMany({
         where: { isDeleted: false },
         select: {
           id: true,
@@ -279,7 +280,7 @@ export class PosSessionsService {
         },
         orderBy: { name: 'asc' },
       }),
-      this.prisma.employee.findMany({
+      this.tenantPrisma.client.employee.findMany({
         where: {
           isDeleted: false,
           hasPOSAccess: true,
@@ -378,7 +379,7 @@ export class PosSessionsService {
     }
 
     const [sessions, total] = await Promise.all([
-      this.prisma.pOSSession.findMany({
+      this.tenantPrisma.client.pOSSession.findMany({
         where,
         skip,
         take: limit,
@@ -399,7 +400,7 @@ export class PosSessionsService {
           },
         },
       }),
-      this.prisma.pOSSession.count({ where }),
+      this.tenantPrisma.client.pOSSession.count({ where }),
     ]);
 
     return {
@@ -423,7 +424,7 @@ export class PosSessionsService {
     limit: number = 20,
   ) {
     // Get all sessions for this terminal except the excluded one
-    const oldSessions = await this.prisma.pOSSession.findMany({
+    const oldSessions = await this.tenantPrisma.client.pOSSession.findMany({
       where: {
         posId,
         id: { not: excludeSessionId },
@@ -454,7 +455,7 @@ export class PosSessionsService {
 
     // Get all invoices from these sessions with full details
     const [invoices, total] = await Promise.all([
-      this.prisma.salesInvoice.findMany({
+      this.tenantPrisma.client.salesInvoice.findMany({
         where,
         skip,
         take: limit,
@@ -518,7 +519,7 @@ export class PosSessionsService {
           },
         },
       }),
-      this.prisma.salesInvoice.count({ where }),
+      this.tenantPrisma.client.salesInvoice.count({ where }),
     ]);
 
     return {
@@ -541,7 +542,7 @@ export class PosSessionsService {
     limit: number = 20,
   ) {
     // Verify session exists
-    const session = await this.prisma.pOSSession.findUnique({
+    const session = await this.tenantPrisma.client.pOSSession.findUnique({
       where: { id: sessionId },
       select: { id: true, isDeleted: true },
     });
@@ -558,7 +559,7 @@ export class PosSessionsService {
 
     // Get all invoices for this session with full details
     const [invoices, total] = await Promise.all([
-      this.prisma.salesInvoice.findMany({
+      this.tenantPrisma.client.salesInvoice.findMany({
         where,
         skip,
         take: limit,
@@ -632,11 +633,11 @@ export class PosSessionsService {
           },
         },
       }),
-      this.prisma.salesInvoice.count({ where }),
+      this.tenantPrisma.client.salesInvoice.count({ where }),
     ]);
 
     // Calculate totals from all invoices (not just current page)
-    const allInvoices = await this.prisma.salesInvoice.findMany({
+    const allInvoices = await this.tenantPrisma.client.salesInvoice.findMany({
       where,
       select: {
         totalAmount: true,

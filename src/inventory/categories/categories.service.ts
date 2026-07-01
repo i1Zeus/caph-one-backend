@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   ConflictException,
   Injectable,
@@ -11,11 +12,11 @@ import { ProductCategory } from './entities/category.entity';
 
 @Injectable()
 export class CategoriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createCategoryDto: CreateCategoryDto): Promise<ProductCategory> {
     // Check if category name already exists
-    const existingCategory = await this.prisma.productCategory.findFirst({
+    const existingCategory = await this.tenantPrisma.client.productCategory.findFirst({
       where: {
         name: createCategoryDto.name,
         isDeleted: false,
@@ -26,7 +27,7 @@ export class CategoriesService {
       throw new ConflictException('اسم الفئة موجود مسبقاً');
     }
 
-    const category = await this.prisma.productCategory.create({
+    const category = await this.tenantPrisma.client.productCategory.create({
       data: createCategoryDto,
     });
 
@@ -53,7 +54,7 @@ export class CategoriesService {
     }
 
     const [categories, total] = await Promise.all([
-      this.prisma.productCategory.findMany({
+      this.tenantPrisma.client.productCategory.findMany({
         where,
         include: {
           products: {
@@ -74,7 +75,7 @@ export class CategoriesService {
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.productCategory.count({ where }),
+      this.tenantPrisma.client.productCategory.count({ where }),
     ]);
 
     return {
@@ -95,7 +96,7 @@ export class CategoriesService {
   }
 
   async findOne(id: number): Promise<ProductCategory> {
-    const category = await this.prisma.productCategory.findFirst({
+    const category = await this.tenantPrisma.client.productCategory.findFirst({
       where: { id, isDeleted: false },
       include: {
         products: {
@@ -130,7 +131,7 @@ export class CategoriesService {
     id: number,
     updateCategoryDto: UpdateCategoryDto,
   ): Promise<ProductCategory> {
-    const existingCategory = await this.prisma.productCategory.findFirst({
+    const existingCategory = await this.tenantPrisma.client.productCategory.findFirst({
       where: { id, isDeleted: false },
     });
 
@@ -143,7 +144,7 @@ export class CategoriesService {
       updateCategoryDto.name &&
       updateCategoryDto.name !== existingCategory.name
     ) {
-      const duplicateCategory = await this.prisma.productCategory.findFirst({
+      const duplicateCategory = await this.tenantPrisma.client.productCategory.findFirst({
         where: {
           name: updateCategoryDto.name,
           isDeleted: false,
@@ -156,7 +157,7 @@ export class CategoriesService {
       }
     }
 
-    const category = await this.prisma.productCategory.update({
+    const category = await this.tenantPrisma.client.productCategory.update({
       where: { id },
       data: updateCategoryDto,
     });
@@ -165,7 +166,7 @@ export class CategoriesService {
   }
 
   async remove(id: number): Promise<void> {
-    const category = await this.prisma.productCategory.findFirst({
+    const category = await this.tenantPrisma.client.productCategory.findFirst({
       where: { id, isDeleted: false },
     });
 
@@ -176,7 +177,7 @@ export class CategoriesService {
     // Note: We allow deletion even if category has products, but we could add a check here
     // if business logic requires preventing deletion of categories with products
     // Check if category has products
-    // const productsCount = await this.prisma.productCategoryRelation.count({
+    // const productsCount = await this.tenantPrisma.client.productCategoryRelation.count({
     //   where: {
     //     categoryId: id,
     //     product: { isDeleted: false },
@@ -184,7 +185,7 @@ export class CategoriesService {
     // });
 
     // Soft delete
-    await this.prisma.productCategory.update({
+    await this.tenantPrisma.client.productCategory.update({
       where: { id },
       data: { isDeleted: true },
     });
@@ -193,11 +194,11 @@ export class CategoriesService {
   async getCategoryStats() {
     const [totalCategories, activeCategories, categoriesWithProducts] =
       await Promise.all([
-        this.prisma.productCategory.count({ where: { isDeleted: false } }),
-        this.prisma.productCategory.count({
+        this.tenantPrisma.client.productCategory.count({ where: { isDeleted: false } }),
+        this.tenantPrisma.client.productCategory.count({
           where: { isDeleted: false, isActive: true },
         }),
-        this.prisma.productCategory.count({
+        this.tenantPrisma.client.productCategory.count({
           where: {
             isDeleted: false,
             products: {
@@ -219,7 +220,7 @@ export class CategoriesService {
   }
 
   async getCategoryProducts(id: number) {
-    const category = await this.prisma.productCategory.findFirst({
+    const category = await this.tenantPrisma.client.productCategory.findFirst({
       where: { id, isDeleted: false },
       include: {
         products: {

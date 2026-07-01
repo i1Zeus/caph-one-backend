@@ -6,6 +6,8 @@ export { Auth, AuthOnly, Public } from './decorators/universal-auth.decorator';
 // Universal Guards
 export { GlobalAuthGuard } from './guards/global-auth.guard';
 export { UniversalAuthGuard } from './guards/universal-auth.guard';
+export { TenantGuard } from './guards/tenant.guard';
+export { SkipTenantCheck } from './decorators/skip-tenant.decorator';
 
 // Advanced Decorators (for specific use cases)
 export {

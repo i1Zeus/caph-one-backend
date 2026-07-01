@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   ConflictException,
@@ -15,7 +16,7 @@ import { Lead, LeadStage } from './entities';
 
 @Injectable()
 export class CrmService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   // ============ LEADS ============
 
@@ -28,7 +29,7 @@ export class CrmService {
     }
 
     // Verify workspace exists
-    const workspace = await this.prisma.workspace.findFirst({
+    const workspace = await this.tenantPrisma.client.workspace.findFirst({
       where: { id: workspaceId, isDeleted: false },
     });
     if (!workspace) {
@@ -38,7 +39,7 @@ export class CrmService {
     // Verify stage exists if provided, otherwise set to null (unstaged)
     let validatedStageId = stageId;
     if (stageId) {
-      const stage = await this.prisma.leadStage.findFirst({
+      const stage = await this.tenantPrisma.client.leadStage.findFirst({
         where: { id: stageId, workspaceId, isDeleted: false },
       });
       if (!stage) {
@@ -51,7 +52,7 @@ export class CrmService {
 
     // Verify salesMan exists and belongs to workspace if provided
     if (salesManId) {
-      const salesMan = await this.prisma.user.findFirst({
+      const salesMan = await this.tenantPrisma.client.user.findFirst({
         where: {
           id: salesManId,
           isDeleted: false,
@@ -69,7 +70,7 @@ export class CrmService {
       }
     }
 
-    return this.prisma.lead.create({
+    return this.tenantPrisma.client.lead.create({
       data: {
         ...leadData,
         workspaceId,
@@ -100,7 +101,7 @@ export class CrmService {
       where.stageId = stageId;
     }
 
-    return this.prisma.lead.findMany({
+    return this.tenantPrisma.client.lead.findMany({
       where,
       include: {
         stage: true,
@@ -117,7 +118,7 @@ export class CrmService {
   }
 
   async findLeadById(id: string): Promise<Lead> {
-    const lead = await this.prisma.lead.findFirst({
+    const lead = await this.tenantPrisma.client.lead.findFirst({
       where: { id, isDeleted: false },
       include: {
         stage: true,
@@ -164,7 +165,7 @@ export class CrmService {
     let validatedStageId = stageId;
     if (stageId !== undefined) {
       if (stageId) {
-        const stage = await this.prisma.leadStage.findFirst({
+        const stage = await this.tenantPrisma.client.leadStage.findFirst({
           where: {
             id: stageId,
             workspaceId: workspaceId || existingLead.workspaceId,
@@ -184,7 +185,7 @@ export class CrmService {
 
     // Verify salesMan exists and belongs to workspace if provided
     if (salesManId) {
-      const salesMan = await this.prisma.user.findFirst({
+      const salesMan = await this.tenantPrisma.client.user.findFirst({
         where: {
           id: salesManId,
           isDeleted: false,
@@ -202,7 +203,7 @@ export class CrmService {
       }
     }
 
-    return this.prisma.lead.update({
+    return this.tenantPrisma.client.lead.update({
       where: { id },
       data: {
         ...updateData,
@@ -225,7 +226,7 @@ export class CrmService {
   async deleteLead(id: string): Promise<void> {
     await this.findLeadById(id);
 
-    await this.prisma.lead.update({
+    await this.tenantPrisma.client.lead.update({
       where: { id },
       data: { isDeleted: true },
     });
@@ -237,7 +238,7 @@ export class CrmService {
     // Verify stage exists if provided, otherwise move to unstaged
     let validatedStageId = stageId;
     if (stageId) {
-      const stage = await this.prisma.leadStage.findFirst({
+      const stage = await this.tenantPrisma.client.leadStage.findFirst({
         where: { id: stageId, workspaceId: lead.workspaceId, isDeleted: false },
       });
       if (!stage) {
@@ -248,7 +249,7 @@ export class CrmService {
       }
     }
 
-    return this.prisma.lead.update({
+    return this.tenantPrisma.client.lead.update({
       where: { id: leadId },
       data: { stageId: validatedStageId },
       include: {
@@ -272,7 +273,7 @@ export class CrmService {
     const { workspaceId, order, ...stageData } = createLeadStageDto;
 
     // Verify workspace exists
-    const workspace = await this.prisma.workspace.findFirst({
+    const workspace = await this.tenantPrisma.client.workspace.findFirst({
       where: { id: workspaceId, isDeleted: false },
     });
     if (!workspace) {
@@ -282,7 +283,7 @@ export class CrmService {
     // If order is not provided, set it to the next available order
     let stageOrder = order;
     if (stageOrder === undefined) {
-      const lastStage = await this.prisma.leadStage.findFirst({
+      const lastStage = await this.tenantPrisma.client.leadStage.findFirst({
         where: { workspaceId, isDeleted: false },
         orderBy: { order: 'asc' },
       });
@@ -291,7 +292,7 @@ export class CrmService {
 
     // Check if order already exists in this workspace
     if (stageOrder !== undefined) {
-      const existingStage = await this.prisma.leadStage.findFirst({
+      const existingStage = await this.tenantPrisma.client.leadStage.findFirst({
         where: { workspaceId, order: stageOrder, isDeleted: false },
       });
       if (existingStage) {
@@ -301,7 +302,7 @@ export class CrmService {
       }
     }
 
-    return this.prisma.leadStage.create({
+    return this.tenantPrisma.client.leadStage.create({
       data: {
         ...stageData,
         workspaceId,
@@ -316,7 +317,7 @@ export class CrmService {
   }
 
   async findAllLeadStages(workspaceId: string): Promise<LeadStage[]> {
-    return this.prisma.leadStage.findMany({
+    return this.tenantPrisma.client.leadStage.findMany({
       where: { workspaceId, isDeleted: false },
       include: {
         _count: {
@@ -328,7 +329,7 @@ export class CrmService {
   }
 
   async findLeadStageById(id: string): Promise<LeadStage> {
-    const stage = await this.prisma.leadStage.findFirst({
+    const stage = await this.tenantPrisma.client.leadStage.findFirst({
       where: { id, isDeleted: false },
       include: {
         _count: {
@@ -354,7 +355,7 @@ export class CrmService {
 
     // Check if order already exists in this workspace (excluding current stage)
     if (order !== undefined && order !== existingStage.order) {
-      const conflictingStage = await this.prisma.leadStage.findFirst({
+      const conflictingStage = await this.tenantPrisma.client.leadStage.findFirst({
         where: {
           workspaceId: existingStage.workspaceId,
           order,
@@ -369,7 +370,7 @@ export class CrmService {
       }
     }
 
-    return this.prisma.leadStage.update({
+    return this.tenantPrisma.client.leadStage.update({
       where: { id },
       data: {
         ...updateData,
@@ -386,7 +387,7 @@ export class CrmService {
   async deleteLeadStage(id: string): Promise<void> {
     // const existingStage = await this.findLeadStageById(id);
 
-    await this.prisma.leadStage.update({
+    await this.tenantPrisma.client.leadStage.update({
       where: { id },
       data: { isDeleted: true },
     });
@@ -394,7 +395,7 @@ export class CrmService {
 
   async getWorkspaceKanban(workspaceId: string): Promise<any> {
     // Verify workspace exists
-    const workspace = await this.prisma.workspace.findFirst({
+    const workspace = await this.tenantPrisma.client.workspace.findFirst({
       where: {
         id: workspaceId,
         isDeleted: false,
@@ -406,7 +407,7 @@ export class CrmService {
     }
 
     // Fetch stages with their leads
-    const stages = await this.prisma.leadStage.findMany({
+    const stages = await this.tenantPrisma.client.leadStage.findMany({
       where: {
         workspaceId,
         isDeleted: false,
@@ -454,7 +455,7 @@ export class CrmService {
     });
 
     // Fetch unstaged leads (leads with no stage or invalid stage)
-    const unstagedLeads = await this.prisma.lead.findMany({
+    const unstagedLeads = await this.tenantPrisma.client.lead.findMany({
       where: {
         workspaceId,
         isDeleted: false,
@@ -507,7 +508,7 @@ export class CrmService {
     leadMoves: { id: string; stageId: string | null; order?: number }[],
   ): Promise<any> {
     // Verify workspace exists
-    const workspace = await this.prisma.workspace.findFirst({
+    const workspace = await this.tenantPrisma.client.workspace.findFirst({
       where: {
         id: workspaceId,
         isDeleted: false,
@@ -526,7 +527,7 @@ export class CrmService {
 
           // Verify stage exists if provided, otherwise set to unstaged
           if (stageId) {
-            const stage = await this.prisma.leadStage.findFirst({
+            const stage = await this.tenantPrisma.client.leadStage.findFirst({
               where: { id: stageId, workspaceId, isDeleted: false },
             });
             if (!stage) {
@@ -542,7 +543,7 @@ export class CrmService {
             updateData.order = order;
           }
 
-          return this.prisma.lead.update({
+          return this.tenantPrisma.client.lead.update({
             where: { id },
             data: updateData,
           });

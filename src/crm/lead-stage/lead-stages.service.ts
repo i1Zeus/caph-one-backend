@@ -70,7 +70,8 @@ export class LeadStagesService {
               `Order ${finalOrder} conflicts with existing records, finding next available order`,
             );
             // Find the next available order that doesn't conflict with any record
-            let nextOrder = Math.max(...Array.from(allUsedOrders), 0) + 1;
+            let nextOrder =
+              Math.max(...(Array.from(allUsedOrders) as number[]), 0) + 1;
             while (allUsedOrders.has(nextOrder)) {
               nextOrder++;
             }
@@ -82,7 +83,8 @@ export class LeadStagesService {
           if (allUsedOrders.size === 0) {
             finalOrder = 0; // Start with 0 if no stages exist
           } else {
-            let nextOrder = Math.max(...Array.from(allUsedOrders)) + 1;
+            let nextOrder =
+              Math.max(...(Array.from(allUsedOrders) as number[])) + 1;
             while (allUsedOrders.has(nextOrder)) {
               nextOrder++;
             }
@@ -118,7 +120,10 @@ export class LeadStagesService {
               // Unique constraint violation on order, try next available order
               if (attempts < maxAttempts) {
                 finalOrder =
-                  Math.max(...Array.from(allUsedOrders), finalOrder) + 1;
+                  Math.max(
+                    ...(Array.from(allUsedOrders) as number[]),
+                    finalOrder,
+                  ) + 1;
                 allUsedOrders.add(finalOrder); // Add to the set to avoid reusing
                 console.log(`Retrying with order: ${finalOrder}`);
               } else {

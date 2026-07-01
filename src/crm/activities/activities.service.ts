@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   ForbiddenException,
   Injectable,
@@ -10,11 +11,11 @@ import { UpdateActivityDto } from './dto/update-activity.dto';
 
 @Injectable()
 export class ActivitiesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createActivityDto: CreateActivityDto): Promise<LeadActivity> {
     // Verify lead exists and user has access
-    const lead = await this.prisma.lead.findUnique({
+    const lead = await this.tenantPrisma.client.lead.findUnique({
       where: { id: createActivityDto.leadId },
       include: { workspace: { include: { members: true } } },
     });
@@ -32,7 +33,7 @@ export class ActivitiesService {
 
     // Verify assigned user exists if provided
     if (assignedToId) {
-      const assignedUser = await this.prisma.user.findUnique({
+      const assignedUser = await this.tenantPrisma.client.user.findUnique({
         where: { id: assignedToId },
       });
 
@@ -50,7 +51,7 @@ export class ActivitiesService {
       }
     }
 
-    return this.prisma.leadActivity.create({
+    return this.tenantPrisma.client.leadActivity.create({
       data: {
         leadId: createActivityDto.leadId,
         activityType: createActivityDto.activityType,
@@ -82,7 +83,7 @@ export class ActivitiesService {
 
   async findAllForLead(leadId: string): Promise<LeadActivity[]> {
     // Verify lead exists
-    const lead = await this.prisma.lead.findUnique({
+    const lead = await this.tenantPrisma.client.lead.findUnique({
       where: { id: leadId },
     });
 
@@ -90,7 +91,7 @@ export class ActivitiesService {
       throw new NotFoundException('Lead not found');
     }
 
-    return this.prisma.leadActivity.findMany({
+    return this.tenantPrisma.client.leadActivity.findMany({
       where: { leadId },
       include: {
         lead: {
@@ -114,7 +115,7 @@ export class ActivitiesService {
   }
 
   async findOne(id: string): Promise<LeadActivity> {
-    const activity = await this.prisma.leadActivity.findUnique({
+    const activity = await this.tenantPrisma.client.leadActivity.findUnique({
       where: { id },
       include: {
         lead: {
@@ -157,7 +158,7 @@ export class ActivitiesService {
 
     // Verify assigned user exists if provided
     if (assignedToId) {
-      const assignedUser = await this.prisma.user.findUnique({
+      const assignedUser = await this.tenantPrisma.client.user.findUnique({
         where: { id: assignedToId },
       });
 
@@ -180,7 +181,7 @@ export class ActivitiesService {
     if (updateActivityDto.isDone !== undefined)
       updateData.isDone = updateActivityDto.isDone;
 
-    return this.prisma.leadActivity.update({
+    return this.tenantPrisma.client.leadActivity.update({
       where: { id },
       data: updateData,
       include: {
@@ -206,7 +207,7 @@ export class ActivitiesService {
   async remove(id: string): Promise<void> {
     // const activity = await this.findOne(id);
 
-    await this.prisma.leadActivity.delete({
+    await this.tenantPrisma.client.leadActivity.delete({
       where: { id },
     });
   }
@@ -214,7 +215,7 @@ export class ActivitiesService {
   async toggleDone(id: string): Promise<LeadActivity> {
     const activity = await this.findOne(id);
 
-    return this.prisma.leadActivity.update({
+    return this.tenantPrisma.client.leadActivity.update({
       where: { id },
       data: { isDone: !activity.isDone },
       include: {
@@ -239,7 +240,7 @@ export class ActivitiesService {
 
   // Get activities statistics for a lead
   async getLeadActivityStats(leadId: string) {
-    const lead = await this.prisma.lead.findUnique({
+    const lead = await this.tenantPrisma.client.lead.findUnique({
       where: { id: leadId },
     });
 
@@ -254,12 +255,12 @@ export class ActivitiesService {
       recentActivities,
     ] = await Promise.all([
       // Total activities count
-      this.prisma.leadActivity.count({
+      this.tenantPrisma.client.leadActivity.count({
         where: { leadId },
       }),
 
       // Activities by type
-      this.prisma.leadActivity.groupBy({
+      this.tenantPrisma.client.leadActivity.groupBy({
         by: ['activityType'],
         where: { leadId },
         _count: {
@@ -268,7 +269,7 @@ export class ActivitiesService {
       }),
 
       // Upcoming activities (next 7 days)
-      this.prisma.leadActivity.count({
+      this.tenantPrisma.client.leadActivity.count({
         where: {
           leadId,
           activityDate: {
@@ -279,7 +280,7 @@ export class ActivitiesService {
       }),
 
       // Recent activities (last 30 days)
-      this.prisma.leadActivity.count({
+      this.tenantPrisma.client.leadActivity.count({
         where: {
           leadId,
           createdAt: {
@@ -305,7 +306,7 @@ export class ActivitiesService {
 
   // Get upcoming activities for workspace (dashboard)
   async getWorkspaceUpcomingActivities(workspaceId: string, limit = 10) {
-    return this.prisma.leadActivity.findMany({
+    return this.tenantPrisma.client.leadActivity.findMany({
       where: {
         lead: { workspaceId },
         activityDate: {

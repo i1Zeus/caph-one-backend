@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   Injectable,
   Logger,
@@ -16,7 +17,7 @@ import { AccountType } from '@prisma/client';
 export class AccountsService {
   private readonly logger = new Logger(AccountsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   /**
    * Calculate account balance based on double-entry accounting principles
@@ -66,7 +67,7 @@ export class AccountsService {
     includeChildren: boolean = true,
   ): Promise<number> {
     // Calculate own balance from transaction entries
-    const ownEntries = await this.prisma.transactionLine.findMany({
+    const ownEntries = await this.tenantPrisma.client.transactionLine.findMany({
       where: {
         accountId: accountId,
         isDeleted: false, // Filter out soft-deleted transaction lines
@@ -88,7 +89,7 @@ export class AccountsService {
     }
 
     // Get all children accounts
-    const children = await this.prisma.account.findMany({
+    const children = await this.tenantPrisma.client.account.findMany({
       where: {
         parentId: accountId,
         isDeleted: false,
@@ -117,7 +118,7 @@ export class AccountsService {
     try {
       // Validate parent account if provided
       if (createAccountDto.parentId) {
-        const parentAccount = await this.prisma.account.findUnique({
+        const parentAccount = await this.tenantPrisma.client.account.findUnique({
           where: { id: createAccountDto.parentId, isDeleted: false },
         });
 
@@ -133,7 +134,7 @@ export class AccountsService {
         }
       }
 
-      const account = await this.prisma.account.create({
+      const account = await this.tenantPrisma.client.account.create({
         data: {
           name: createAccountDto.name,
           code: createAccountDto.code,
@@ -194,7 +195,7 @@ export class AccountsService {
         whereClause.parentId = filters.parentId;
       }
 
-      const accounts = await this.prisma.account.findMany({
+      const accounts = await this.tenantPrisma.client.account.findMany({
         where: whereClause,
         include: {
           currency: true,
@@ -249,7 +250,7 @@ export class AccountsService {
 
   async getAccountsSummary() {
     try {
-      const accounts = await this.prisma.account.findMany({
+      const accounts = await this.tenantPrisma.client.account.findMany({
         where: { isDeleted: false },
         include: {
           entries: {
@@ -313,7 +314,7 @@ export class AccountsService {
         whereClause.type = filters.type;
       }
 
-      return await this.prisma.account.findMany({
+      return await this.tenantPrisma.client.account.findMany({
         where: whereClause,
         include: {
           currency: true,
@@ -339,7 +340,7 @@ export class AccountsService {
 
   async findOne(id: number) {
     try {
-      const account = await this.prisma.account.findUnique({
+      const account = await this.tenantPrisma.client.account.findUnique({
         where: { id, isDeleted: false },
         include: {
           currency: true,
@@ -399,7 +400,7 @@ export class AccountsService {
 
   async getAccountTransactions(id: number) {
     try {
-      const account = await this.prisma.account.findUnique({
+      const account = await this.tenantPrisma.client.account.findUnique({
         where: { id, isDeleted: false },
       });
 
@@ -407,7 +408,7 @@ export class AccountsService {
         throw new NotFoundException(`Account with ID ${id} not found`);
       }
 
-      const transactions = await this.prisma.transactionLine.findMany({
+      const transactions = await this.tenantPrisma.client.transactionLine.findMany({
         where: {
           accountId: id,
           isDeleted: false,
@@ -464,7 +465,7 @@ export class AccountsService {
         whereClause.isCash = filters.isCash;
       }
 
-      const rootAccounts = await this.prisma.account.findMany({
+      const rootAccounts = await this.tenantPrisma.client.account.findMany({
         where: whereClause,
         include: {
           currency: true,
@@ -510,7 +511,7 @@ export class AccountsService {
    */
   async getAccountChildren(parentId: number) {
     try {
-      const children = await this.prisma.account.findMany({
+      const children = await this.tenantPrisma.client.account.findMany({
         where: {
           parentId: parentId,
           isDeleted: false,
@@ -562,7 +563,7 @@ export class AccountsService {
    */
   async getAccountBalance(accountId: number, includeChildren: boolean = true) {
     try {
-      const account = await this.prisma.account.findUnique({
+      const account = await this.tenantPrisma.client.account.findUnique({
         where: { id: accountId, isDeleted: false },
         select: {
           id: true,
@@ -641,7 +642,7 @@ export class AccountsService {
         whereClause.type = type;
       }
 
-      const accounts = await this.prisma.account.findMany({
+      const accounts = await this.tenantPrisma.client.account.findMany({
         where: whereClause,
         include: {
           currency: true,
@@ -703,7 +704,7 @@ export class AccountsService {
         whereClause.id = { not: excludeId };
       }
 
-      const accounts = await this.prisma.account.findMany({
+      const accounts = await this.tenantPrisma.client.account.findMany({
         where: whereClause,
         select: {
           id: true,
@@ -739,7 +740,7 @@ export class AccountsService {
     try {
       // Validate parent account if provided
       if (updateAccountDto.parentId) {
-        const parentAccount = await this.prisma.account.findUnique({
+        const parentAccount = await this.tenantPrisma.client.account.findUnique({
           where: { id: updateAccountDto.parentId, isDeleted: false },
         });
 
@@ -770,7 +771,7 @@ export class AccountsService {
               'Cannot set parent as it would create a circular reference',
             );
           }
-          const nextParent = await this.prisma.account.findUnique({
+          const nextParent = await this.tenantPrisma.client.account.findUnique({
             where: { id: currentParent.parentId },
           });
           if (!nextParent) break;
@@ -778,7 +779,7 @@ export class AccountsService {
         }
       }
 
-      const account = await this.prisma.account.update({
+      const account = await this.tenantPrisma.client.account.update({
         where: { id, isDeleted: false },
         data: updateAccountDto,
         include: {
@@ -814,7 +815,7 @@ export class AccountsService {
   async remove(id: number) {
     try {
       // Check if account has transaction entries or child accounts
-      const account = await this.prisma.account.findUnique({
+      const account = await this.tenantPrisma.client.account.findUnique({
         where: { id, isDeleted: false },
         include: {
           entries: true,
@@ -841,7 +842,7 @@ export class AccountsService {
       }
 
       // Soft delete
-      await this.prisma.account.update({
+      await this.tenantPrisma.client.account.update({
         where: { id },
         data: { isDeleted: true },
       });
@@ -880,7 +881,7 @@ export class AccountsService {
       const accountIds = createTransactionDto.entries.map(
         (entry) => entry.accountId,
       );
-      const accounts = await this.prisma.account.findMany({
+      const accounts = await this.tenantPrisma.client.account.findMany({
         where: {
           id: { in: accountIds },
           isDeleted: false,
@@ -891,7 +892,7 @@ export class AccountsService {
         throw new BadRequestException('One or more accounts not found');
       }
 
-      const transaction = await this.prisma.transaction.create({
+      const transaction = await this.tenantPrisma.client.transaction.create({
         data: {
           date: createTransactionDto.date
             ? new Date(createTransactionDto.date)
@@ -951,7 +952,7 @@ export class AccountsService {
 
   async getCashAccounts() {
     try {
-      return await this.prisma.account.findMany({
+      return await this.tenantPrisma.client.account.findMany({
         where: {
           isCash: true,
           isDeleted: false,

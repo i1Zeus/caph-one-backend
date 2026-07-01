@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   ConflictException,
@@ -19,13 +20,13 @@ import { UpdateUserDto } from './dto/update-user.dto';
 @Injectable()
 export class UsersService {
   constructor(
-    private prisma: PrismaService,
+    private prisma: PrismaService, private tenantPrisma: TenantPrismaService,
     private notificationsService: NotificationsService,
   ) {}
 
   async create(createUserDto: CreateUserDto) {
     // Check if user with email already exists
-    const existingUserByEmail = await this.prisma.user.findUnique({
+    const existingUserByEmail = await this.tenantPrisma.client.user.findUnique({
       where: { email: createUserDto.email },
     });
 
@@ -35,7 +36,7 @@ export class UsersService {
 
     // Check if user with phone already exists
     const cleanedPhone = cleanPhoneNumber(createUserDto.phone);
-    const existingUserByPhone = await this.prisma.user.findUnique({
+    const existingUserByPhone = await this.tenantPrisma.client.user.findUnique({
       where: { phone: cleanedPhone },
     });
 
@@ -76,7 +77,7 @@ export class UsersService {
         data.img = await compressImage(data.img);
       }
 
-      const user = await this.prisma.user.create({
+      const user = await this.tenantPrisma.client.user.create({
         data,
         select: {
           id: true,
@@ -94,7 +95,7 @@ export class UsersService {
       // Assign roles if provided
       if (roleIds && roleIds.length > 0) {
         // Validate that all roleIds exist
-        const existingRoles = await this.prisma.role.findMany({
+        const existingRoles = await this.tenantPrisma.client.role.findMany({
           where: {
             id: { in: roleIds },
             isDeleted: false,
@@ -114,7 +115,7 @@ export class UsersService {
         }
 
         // Create UserRole records
-        await this.prisma.userRole.createMany({
+        await this.tenantPrisma.client.userRole.createMany({
           data: validRoleIds.map((roleId) => ({
             userId: user.id,
             roleId: roleId,
@@ -123,7 +124,7 @@ export class UsersService {
       }
 
       // Fetch the complete user with roles
-      const userWithRoles = await this.prisma.user.findUnique({
+      const userWithRoles = await this.tenantPrisma.client.user.findUnique({
         where: { id: user.id },
         select: {
           id: true,
@@ -288,10 +289,10 @@ export class UsersService {
     }
 
     // Get total count for pagination metadata
-    const total = await this.prisma.user.count({ where });
+    const total = await this.tenantPrisma.client.user.count({ where });
 
     // Get paginated users
-    const users = await this.prisma.user.findMany({
+    const users = await this.tenantPrisma.client.user.findMany({
       where,
       select: {
         id: true,
@@ -420,7 +421,7 @@ export class UsersService {
         })),
     ]);
 
-    const users = await this.prisma.user.findMany({
+    const users = await this.tenantPrisma.client.user.findMany({
       where: {
         isDeleted: false,
         workspaces: {
@@ -471,7 +472,7 @@ export class UsersService {
 
   // Keep the old findAll method for backward compatibility but mark as deprecated
   async findAllLegacy() {
-    const users = await this.prisma.user.findMany({
+    const users = await this.tenantPrisma.client.user.findMany({
       select: {
         id: true,
         name: true,
@@ -511,7 +512,7 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.tenantPrisma.client.user.findUnique({
       where: { id },
       select: {
         id: true,
@@ -575,7 +576,7 @@ export class UsersService {
   }
 
   async findByEmail(email: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.tenantPrisma.client.user.findUnique({
       where: { email },
     });
 
@@ -587,7 +588,7 @@ export class UsersService {
   }
 
   async findByPhone(phone: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.tenantPrisma.client.user.findUnique({
       where: { phone },
     });
 
@@ -599,7 +600,7 @@ export class UsersService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.tenantPrisma.client.user.findUnique({
       where: { id },
     });
 
@@ -609,7 +610,7 @@ export class UsersService {
 
     // Check for unique constraints if email or phone is being updated
     if (updateUserDto.email && updateUserDto.email !== user.email) {
-      const existingUserByEmail = await this.prisma.user.findFirst({
+      const existingUserByEmail = await this.tenantPrisma.client.user.findFirst({
         where: {
           email: updateUserDto.email,
           id: { not: id }, // Exclude the current user from the check
@@ -623,7 +624,7 @@ export class UsersService {
 
     if (updateUserDto.phone && updateUserDto.phone !== user.phone) {
       const cleanedPhone = cleanPhoneNumber(updateUserDto.phone);
-      const existingUserByPhone = await this.prisma.user.findFirst({
+      const existingUserByPhone = await this.tenantPrisma.client.user.findFirst({
         where: {
           phone: cleanedPhone,
           id: { not: id }, // Exclude the current user from the check
@@ -662,7 +663,7 @@ export class UsersService {
         data.img = await compressImage(data.img);
       }
 
-      const updatedUser = await this.prisma.user.update({
+      const updatedUser = await this.tenantPrisma.client.user.update({
         where: { id },
         data,
         select: {
@@ -723,7 +724,7 @@ export class UsersService {
     id: string,
     updateUserSettingsDto: UpdateUserSettingsDto,
   ) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.tenantPrisma.client.user.findUnique({
       where: { id },
       include: {
         employee: true,
@@ -744,7 +745,7 @@ export class UsersService {
     }
 
     // Update user basic fields
-    const updatedUser = await this.prisma.user.update({
+    const updatedUser = await this.tenantPrisma.client.user.update({
       where: { id },
       data: userData,
       select: {
@@ -769,13 +770,13 @@ export class UsersService {
     if (Object.keys(employeeData).length > 0) {
       if (user.employee) {
         // Update existing employee record
-        await this.prisma.employee.update({
+        await this.tenantPrisma.client.employee.update({
           where: { userId: id },
           data: employeeData,
         });
       } else {
         // Create new employee record for the user
-        await this.prisma.employee.create({
+        await this.tenantPrisma.client.employee.create({
           data: {
             userId: id,
             firstName: firstName || '',
@@ -789,7 +790,7 @@ export class UsersService {
     }
 
     // Return the updated user with employee fields
-    const finalUser = await this.prisma.user.findUnique({
+    const finalUser = await this.tenantPrisma.client.user.findUnique({
       where: { id },
       select: {
         id: true,
@@ -822,7 +823,7 @@ export class UsersService {
   }
 
   async remove(id: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.tenantPrisma.client.user.findUnique({
       where: { id },
     });
 
@@ -832,7 +833,7 @@ export class UsersService {
 
     // Soft delete by setting isDeleted to true instead of hard delete
     // This preserves referential integrity and audit trail
-    const deletedUser = await this.prisma.user.update({
+    const deletedUser = await this.tenantPrisma.client.user.update({
       where: { id },
       data: { isDeleted: true },
       select: {

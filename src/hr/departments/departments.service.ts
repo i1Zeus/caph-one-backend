@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -9,13 +10,13 @@ import { CreateDepartmentDto, UpdateDepartmentDto } from './dto';
 
 @Injectable()
 export class DepartmentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(createDepartmentDto: CreateDepartmentDto): Promise<Department> {
     try {
       // Check if parent department exists if parentId is provided
       if (createDepartmentDto.parentId) {
-        const parentDepartment = await this.prisma.department.findUnique({
+        const parentDepartment = await this.tenantPrisma.client.department.findUnique({
           where: { id: createDepartmentDto.parentId, isDeleted: false },
         });
         if (!parentDepartment) {
@@ -23,7 +24,7 @@ export class DepartmentsService {
         }
       }
 
-      return await this.prisma.department.create({
+      return await this.tenantPrisma.client.department.create({
         data: createDepartmentDto,
         include: {
           parent: true,
@@ -48,7 +49,7 @@ export class DepartmentsService {
   }
 
   async findAll(): Promise<Department[]> {
-    return await this.prisma.department.findMany({
+    return await this.tenantPrisma.client.department.findMany({
       where: { isDeleted: false },
       include: {
         parent: true,
@@ -70,7 +71,7 @@ export class DepartmentsService {
   }
 
   async findOne(id: string): Promise<Department> {
-    const department = await this.prisma.department.findUnique({
+    const department = await this.tenantPrisma.client.department.findUnique({
       where: { id, isDeleted: false },
       include: {
         parent: true,
@@ -102,7 +103,7 @@ export class DepartmentsService {
   ): Promise<Department> {
     try {
       // Check if department exists
-      const existingDepartment = await this.prisma.department.findUnique({
+      const existingDepartment = await this.tenantPrisma.client.department.findUnique({
         where: { id, isDeleted: false },
       });
 
@@ -116,7 +117,7 @@ export class DepartmentsService {
           throw new BadRequestException('Department cannot be its own parent');
         }
 
-        const parentDepartment = await this.prisma.department.findUnique({
+        const parentDepartment = await this.tenantPrisma.client.department.findUnique({
           where: { id: updateDepartmentDto.parentId, isDeleted: false },
         });
         if (!parentDepartment) {
@@ -127,7 +128,7 @@ export class DepartmentsService {
         await this.checkCircularReference(id, updateDepartmentDto.parentId);
       }
 
-      return await this.prisma.department.update({
+      return await this.tenantPrisma.client.department.update({
         where: { id },
         data: updateDepartmentDto,
         include: {
@@ -160,7 +161,7 @@ export class DepartmentsService {
   async remove(id: string): Promise<void> {
     try {
       // Check if department exists
-      const department = await this.prisma.department.findUnique({
+      const department = await this.tenantPrisma.client.department.findUnique({
         where: { id, isDeleted: false },
         include: {
           children: { where: { isDeleted: false } },
@@ -187,7 +188,7 @@ export class DepartmentsService {
       }
 
       // Soft delete
-      await this.prisma.department.update({
+      await this.tenantPrisma.client.department.update({
         where: { id },
         data: { isDeleted: true },
       });
@@ -203,7 +204,7 @@ export class DepartmentsService {
   }
 
   async getHierarchy(): Promise<Department[]> {
-    const departments = await this.prisma.department.findMany({
+    const departments = await this.tenantPrisma.client.department.findMany({
       where: { isDeleted: false },
       include: {
         parent: true,
@@ -245,7 +246,7 @@ export class DepartmentsService {
 
       visited.add(currentParentId);
 
-      const parent = await this.prisma.department.findUnique({
+      const parent = await this.tenantPrisma.client.department.findUnique({
         where: { id: currentParentId, isDeleted: false },
         select: { parentId: true },
       });

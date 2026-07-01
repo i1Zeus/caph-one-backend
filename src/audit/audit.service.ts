@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -20,7 +21,7 @@ export interface AuditLogData {
 
 @Injectable()
 export class AuditService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   /**
    * Generate navigation link based on entity type and action
@@ -105,7 +106,7 @@ export class AuditService {
         data.metadata,
       );
 
-      await this.prisma.actionHistory.create({
+      await this.tenantPrisma.client.actionHistory.create({
         data: {
           actionType: data.actionType,
           entityType: data.entityType,
@@ -256,7 +257,7 @@ export class AuditService {
     entityId: string,
     limit: number = 50,
   ) {
-    return this.prisma.actionHistory.findMany({
+    return this.tenantPrisma.client.actionHistory.findMany({
       where: {
         entityType: entityType.toUpperCase(),
         entityId,
@@ -281,7 +282,7 @@ export class AuditService {
    * Get audit history for a specific action type
    */
   async getActionHistory(actionType: string, limit: number = 100) {
-    return this.prisma.actionHistory.findMany({
+    return this.tenantPrisma.client.actionHistory.findMany({
       where: {
         actionType: actionType.toUpperCase(),
       },
@@ -305,7 +306,7 @@ export class AuditService {
    * Get audit history for a specific entity type
    */
   async getEntityTypeHistory(entityType: string, limit: number = 100) {
-    return this.prisma.actionHistory.findMany({
+    return this.tenantPrisma.client.actionHistory.findMany({
       where: {
         entityType: entityType.toUpperCase(),
       },
@@ -329,7 +330,7 @@ export class AuditService {
    * Get recent audit history across all entities
    */
   async getRecentHistory(limit: number = 100) {
-    return this.prisma.actionHistory.findMany({
+    return this.tenantPrisma.client.actionHistory.findMany({
       include: {
         user: {
           select: {
@@ -356,7 +357,7 @@ export class AuditService {
     const [totalActions, actionsByType, actionsByEntity, topUsers] =
       await Promise.all([
         // Total actions in the period
-        this.prisma.actionHistory.count({
+        this.tenantPrisma.client.actionHistory.count({
           where: {
             createdAt: {
               gte: startDate,
@@ -365,7 +366,7 @@ export class AuditService {
         }),
 
         // Actions grouped by type
-        this.prisma.actionHistory.groupBy({
+        this.tenantPrisma.client.actionHistory.groupBy({
           by: ['actionType'],
           where: {
             createdAt: {
@@ -378,7 +379,7 @@ export class AuditService {
         }),
 
         // Actions grouped by entity type
-        this.prisma.actionHistory.groupBy({
+        this.tenantPrisma.client.actionHistory.groupBy({
           by: ['entityType'],
           where: {
             createdAt: {
@@ -391,7 +392,7 @@ export class AuditService {
         }),
 
         // Top users by activity
-        this.prisma.actionHistory.groupBy({
+        this.tenantPrisma.client.actionHistory.groupBy({
           by: ['performedBy'],
           where: {
             createdAt: {

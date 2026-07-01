@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { AccountType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -6,17 +7,17 @@ import { PrismaService } from '../prisma/prisma.service';
 export class AccountingService {
   private readonly logger = new Logger(AccountingService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async getDashboardSummary() {
     try {
       // Get main currency for conversion
-      const mainCurrency = await this.prisma.currency.findFirst({
+      const mainCurrency = await this.tenantPrisma.client.currency.findFirst({
         where: { isMain: true },
       });
 
       // Get all accounts with their balances
-      const accounts = await this.prisma.account.findMany({
+      const accounts = await this.tenantPrisma.client.account.findMany({
         where: { isDeleted: false },
         include: {
           currency: true,
@@ -26,7 +27,7 @@ export class AccountingService {
       // Calculate balances for each account
       const accountsWithBalances = await Promise.all(
         accounts.map(async (account) => {
-          const balanceResult = await this.prisma.transactionLine.aggregate({
+          const balanceResult = await this.tenantPrisma.client.transactionLine.aggregate({
             where: {
               accountId: account.id,
               isDeleted: false, // Filter out soft-deleted transaction lines
@@ -57,7 +58,7 @@ export class AccountingService {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const recentTransactions = await this.prisma.transaction.findMany({
+      const recentTransactions = await this.tenantPrisma.client.transaction.findMany({
         where: {
           date: { gte: thirtyDaysAgo },
           isDeleted: false,
@@ -118,15 +119,15 @@ export class AccountingService {
       const totalCash = cashAccounts.reduce((sum, acc) => sum + acc.balance, 0);
 
       // Count summaries
-      const totalTransactions = await this.prisma.transaction.count({
+      const totalTransactions = await this.tenantPrisma.client.transaction.count({
         where: { isDeleted: false },
       });
 
-      const totalClients = await this.prisma.client.count();
+      const totalClients = await this.tenantPrisma.client.client.count();
 
       const totalInvoices = await Promise.all([
-        this.prisma.salesInvoice.count(),
-        this.prisma.purchaseInvoice.count(),
+        this.tenantPrisma.client.salesInvoice.count(),
+        this.tenantPrisma.client.purchaseInvoice.count(),
       ]);
 
       return {
@@ -249,7 +250,7 @@ export class AccountingService {
       }
 
       // Get transaction lines within date range
-      const transactionLines = await this.prisma.transactionLine.findMany({
+      const transactionLines = await this.tenantPrisma.client.transactionLine.findMany({
         where: {
           transaction: whereClause,
         },
@@ -308,7 +309,7 @@ export class AccountingService {
       const summary = [];
 
       for (const type of accountTypes) {
-        const accounts = await this.prisma.account.findMany({
+        const accounts = await this.tenantPrisma.client.account.findMany({
           where: {
             type,
             isDeleted: false,
@@ -320,7 +321,7 @@ export class AccountingService {
         let totalCredits = 0;
 
         for (const account of accounts) {
-          const balanceResult = await this.prisma.transactionLine.aggregate({
+          const balanceResult = await this.tenantPrisma.client.transactionLine.aggregate({
             where: {
               accountId: account.id,
               transaction: {

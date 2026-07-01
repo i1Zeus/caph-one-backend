@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -11,7 +12,7 @@ import { CreatePaymentDto, FilterPaymentsDto, UpdatePaymentDto } from './dto';
 export class PaymentsService {
   // private readonly logger = new Logger(PaymentsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async createPayment(createPaymentDto: CreatePaymentDto) {
     const {
@@ -26,7 +27,7 @@ export class PaymentsService {
       // reference,
     } = createPaymentDto;
 
-    return await this.prisma.$transaction(async (tx) => {
+    return await this.tenantPrisma.client.$transaction(async (tx) => {
       // التحقق من وجود المورد
       const supplier = await tx.client.findUnique({
         where: { id: supplierId },
@@ -269,7 +270,7 @@ export class PaymentsService {
     }
 
     const [transactions, total] = await Promise.all([
-      this.prisma.transaction.findMany({
+      this.tenantPrisma.client.transaction.findMany({
         where,
         include: {
           entries: {
@@ -285,7 +286,7 @@ export class PaymentsService {
         skip,
         take: limit,
       }),
-      this.prisma.transaction.count({ where }),
+      this.tenantPrisma.client.transaction.count({ where }),
     ]);
 
     return {
@@ -300,7 +301,7 @@ export class PaymentsService {
   }
 
   async findOne(id: number) {
-    const transaction = await this.prisma.transaction.findUnique({
+    const transaction = await this.tenantPrisma.client.transaction.findUnique({
       where: {
         id,
         isDeleted: false,
@@ -348,7 +349,7 @@ export class PaymentsService {
       payments,
     } = updatePaymentDto;
 
-    return await this.prisma.$transaction(async (tx) => {
+    return await this.tenantPrisma.client.$transaction(async (tx) => {
       // Get existing transaction with all related data
       const existingTransaction = await tx.transaction.findUnique({
         where: { id, isDeleted: false },
@@ -621,7 +622,7 @@ export class PaymentsService {
   }
 
   async remove(id: number) {
-    const transaction = await this.prisma.transaction.findUnique({
+    const transaction = await this.tenantPrisma.client.transaction.findUnique({
       where: { id },
     });
 
@@ -630,7 +631,7 @@ export class PaymentsService {
     }
 
     // حذف المعاملة (soft delete)
-    await this.prisma.transaction.update({
+    await this.tenantPrisma.client.transaction.update({
       where: { id },
       data: { isDeleted: true },
     });
@@ -673,7 +674,7 @@ export class PaymentsService {
 
     // جلب المعاملات وتحويلها إلى تنسيق Payment
     const [transactions, total] = await Promise.all([
-      this.prisma.transaction.findMany({
+      this.tenantPrisma.client.transaction.findMany({
         where: whereClause,
         include: {
           entries: {
@@ -691,7 +692,7 @@ export class PaymentsService {
         skip,
         take: limit,
       }),
-      this.prisma.transaction.count({
+      this.tenantPrisma.client.transaction.count({
         where: whereClause,
       }),
     ]);

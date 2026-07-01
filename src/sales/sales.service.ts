@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -14,7 +15,7 @@ import { SaleQueryDto } from './dto/sale-query.dto';
 export class SalesService {
   private readonly logger = new Logger(SalesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   // ============================================
   // HELPER: Generate unique sale number
@@ -23,7 +24,7 @@ export class SalesService {
     type: 'QUOTATION' | 'DIRECT',
   ): Promise<string> {
     const prefix = type === 'DIRECT' ? 'DS' : 'SO';
-    const lastSale = await this.prisma.sale.findFirst({
+    const lastSale = await this.tenantPrisma.client.sale.findFirst({
       where: { saleType: type },
       orderBy: { id: 'desc' },
       select: { name: true },
@@ -42,7 +43,7 @@ export class SalesService {
   // HELPER: Generate delivery number
   // ============================================
   private async generateDeliveryNumber(): Promise<string> {
-    const lastDelivery = await this.prisma.saleDelivery.findFirst({
+    const lastDelivery = await this.tenantPrisma.client.saleDelivery.findFirst({
       orderBy: { id: 'desc' },
       select: { name: true },
     });
@@ -158,7 +159,7 @@ export class SalesService {
   // 1. CREATE DIRECT SALE (One-Step)
   // ============================================
   async createDirectSale(dto: CreateDirectSaleDto, userId?: string) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.tenantPrisma.client.$transaction(async (tx) => {
       // 1. Validate all items have sufficient stock
       for (const item of dto.items) {
         const available = await this.getAvailableStock(
@@ -337,7 +338,7 @@ export class SalesService {
     const amountTotal = amountUntaxed + amountTax;
     const saleName = await this.generateSaleNumber('QUOTATION');
 
-    const sale = await this.prisma.sale.create({
+    const sale = await this.tenantPrisma.client.sale.create({
       data: {
         name: saleName,
         saleType: 'QUOTATION',
@@ -380,7 +381,7 @@ export class SalesService {
   // 3. CONFIRM QUOTATION → Reserve Stock
   // ============================================
   async confirmQuotation(saleId: number) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.tenantPrisma.client.$transaction(async (tx) => {
       const sale = await tx.sale.findUnique({
         where: { id: saleId },
         include: { items: { include: { product: true } } },
@@ -458,7 +459,7 @@ export class SalesService {
   // 4. VALIDATE DELIVERY → Deduct Stock
   // ============================================
   async validateDelivery(deliveryId: number, userId?: string) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.tenantPrisma.client.$transaction(async (tx) => {
       const delivery = await tx.saleDelivery.findUnique({
         where: { id: deliveryId },
         include: {
@@ -579,7 +580,7 @@ export class SalesService {
   // 5. CANCEL SALE
   // ============================================
   async cancelSale(saleId: number) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.tenantPrisma.client.$transaction(async (tx) => {
       const sale = await tx.sale.findUnique({
         where: { id: saleId },
         include: { items: true, deliveries: true },
@@ -681,7 +682,7 @@ export class SalesService {
     }
 
     const [data, total] = await Promise.all([
-      this.prisma.sale.findMany({
+      this.tenantPrisma.client.sale.findMany({
         where,
         skip,
         take: Number(limit),
@@ -697,7 +698,7 @@ export class SalesService {
           user: { select: { id: true, name: true } },
         },
       }),
-      this.prisma.sale.count({ where }),
+      this.tenantPrisma.client.sale.count({ where }),
     ]);
 
     return {
@@ -713,7 +714,7 @@ export class SalesService {
   // 7. FIND ONE (Detail)
   // ============================================
   async findOne(saleId: number) {
-    const sale = await this.prisma.sale.findUnique({
+    const sale = await this.tenantPrisma.client.sale.findUnique({
       where: { id: saleId },
       include: {
         client: true,
@@ -763,7 +764,7 @@ export class SalesService {
       recentSales,
     ] = await Promise.all([
       // Today's direct sales count
-      this.prisma.sale.count({
+      this.tenantPrisma.client.sale.count({
         where: {
           saleType: 'DIRECT',
           status: 'COMPLETED',
@@ -772,7 +773,7 @@ export class SalesService {
         },
       }),
       // Today's direct sales total
-      this.prisma.sale.aggregate({
+      this.tenantPrisma.client.sale.aggregate({
         _sum: { amountTotal: true },
         where: {
           saleType: 'DIRECT',
@@ -782,7 +783,7 @@ export class SalesService {
         },
       }),
       // Open quotations
-      this.prisma.sale.count({
+      this.tenantPrisma.client.sale.count({
         where: {
           saleType: 'QUOTATION',
           status: { in: ['DRAFT', 'SENT'] },
@@ -790,7 +791,7 @@ export class SalesService {
         },
       }),
       // Confirmed orders (awaiting delivery)
-      this.prisma.sale.count({
+      this.tenantPrisma.client.sale.count({
         where: {
           saleType: 'QUOTATION',
           status: 'CONFIRMED',
@@ -798,14 +799,14 @@ export class SalesService {
         },
       }),
       // Pending deliveries
-      this.prisma.saleDelivery.count({
+      this.tenantPrisma.client.saleDelivery.count({
         where: {
           status: { in: ['DRAFT', 'READY'] },
           isDeleted: false,
         },
       }),
       // Total sales this month
-      this.prisma.sale.aggregate({
+      this.tenantPrisma.client.sale.aggregate({
         _sum: { amountTotal: true },
         _count: true,
         where: {
@@ -817,7 +818,7 @@ export class SalesService {
         },
       }),
       // Recent 5 sales
-      this.prisma.sale.findMany({
+      this.tenantPrisma.client.sale.findMany({
         where: { isDeleted: false },
         orderBy: { id: 'desc' },
         take: 5,
@@ -861,7 +862,7 @@ export class SalesService {
       ];
     }
 
-    const products = await this.prisma.product.findMany({
+    const products = await this.tenantPrisma.client.product.findMany({
       where,
       orderBy: { name: 'asc' },
       include: {
@@ -925,7 +926,7 @@ export class SalesService {
     if (status) where.status = status;
 
     const [data, total] = await Promise.all([
-      this.prisma.saleDelivery.findMany({
+      this.tenantPrisma.client.saleDelivery.findMany({
         where,
         skip,
         take: Number(limit),
@@ -941,7 +942,7 @@ export class SalesService {
           },
         },
       }),
-      this.prisma.saleDelivery.count({ where }),
+      this.tenantPrisma.client.saleDelivery.count({ where }),
     ]);
 
     return {

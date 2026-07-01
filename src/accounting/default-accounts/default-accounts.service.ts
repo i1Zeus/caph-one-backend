@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateDefaultAccountsDto } from './dto';
@@ -6,13 +7,13 @@ import { UpdateDefaultAccountsDto } from './dto';
 export class DefaultAccountsService {
   private readonly logger = new Logger(DefaultAccountsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async getDefaultAccounts() {
     this.logger.log('Getting default accounts');
 
     // Get or create the single settings row
-    let settings = await this.prisma.accountingSettings.findUnique({
+    let settings = await this.tenantPrisma.client.accountingSettings.findUnique({
       where: { id: 1 },
       select: {
         id: true,
@@ -51,7 +52,7 @@ export class DefaultAccountsService {
 
     // If no settings exist, create the default row
     if (!settings) {
-      settings = await this.prisma.accountingSettings.create({
+      settings = await this.tenantPrisma.client.accountingSettings.create({
         data: { id: 1 },
         select: {
           id: true,
@@ -102,7 +103,7 @@ export class DefaultAccountsService {
 
     // Validate accounts if provided
     if (dto.defaultCustomerAccountId) {
-      const customerAccount = await this.prisma.account.findUnique({
+      const customerAccount = await this.tenantPrisma.client.account.findUnique({
         where: { id: dto.defaultCustomerAccountId },
       });
       if (!customerAccount) {
@@ -113,7 +114,7 @@ export class DefaultAccountsService {
     }
 
     if (dto.defaultSupplierAccountId) {
-      const supplierAccount = await this.prisma.account.findUnique({
+      const supplierAccount = await this.tenantPrisma.client.account.findUnique({
         where: { id: dto.defaultSupplierAccountId },
       });
       if (!supplierAccount) {
@@ -124,7 +125,7 @@ export class DefaultAccountsService {
     }
 
     // Upsert the settings (create if not exists, update if exists)
-    const updatedSettings = await this.prisma.accountingSettings.upsert({
+    const updatedSettings = await this.tenantPrisma.client.accountingSettings.upsert({
       where: { id: 1 },
       create: {
         id: 1,

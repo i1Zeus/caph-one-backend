@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -47,7 +48,7 @@ export interface StageTemplate {
 
 @Injectable()
 export class TemplatesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   // Predefined Task Stage Templates
   private readonly taskStageTemplates: StageTemplate[] = [
@@ -742,7 +743,7 @@ export class TemplatesService {
     templateId: string,
   ): Promise<any[]> {
     // Verify project exists
-    const project = await this.prisma.project.findFirst({
+    const project = await this.tenantPrisma.client.project.findFirst({
       where: {
         id: projectId,
         isDeleted: false,
@@ -754,7 +755,7 @@ export class TemplatesService {
     }
 
     // Check if project already has stages
-    const existingStages = await this.prisma.taskStage.findMany({
+    const existingStages = await this.tenantPrisma.client.taskStage.findMany({
       where: {
         projectId,
         isDeleted: false,
@@ -775,7 +776,7 @@ export class TemplatesService {
 
     try {
       // Create stages from template using transaction for consistency
-      const createdStages = await this.prisma.$transaction(async (prisma) => {
+      const createdStages = await this.tenantPrisma.client.$transaction(async (prisma) => {
         const stages = [];
 
         for (const stageTemplate of template.taskStages) {
@@ -808,7 +809,7 @@ export class TemplatesService {
     templateId: string,
   ): Promise<any[]> {
     // Verify workspace exists
-    const workspace = await this.prisma.workspace.findUnique({
+    const workspace = await this.tenantPrisma.client.workspace.findUnique({
       where: { id: workspaceId },
     });
 
@@ -817,7 +818,7 @@ export class TemplatesService {
     }
 
     // Check if workspace already has stages
-    const existingStages = await this.prisma.projectStage.findMany({
+    const existingStages = await this.tenantPrisma.client.projectStage.findMany({
       where: {
         workspaceId,
         isDeleted: false,
@@ -840,7 +841,7 @@ export class TemplatesService {
 
     try {
       // Create stages from template using transaction for consistency
-      const createdStages = await this.prisma.$transaction(async (prisma) => {
+      const createdStages = await this.tenantPrisma.client.$transaction(async (prisma) => {
         const stages = [];
 
         for (const stageTemplate of template.projectStages) {
@@ -908,7 +909,7 @@ export class TemplatesService {
     templateId: string,
   ): Promise<any[]> {
     // Verify workspace exists
-    const workspace = await this.prisma.workspace.findUnique({
+    const workspace = await this.tenantPrisma.client.workspace.findUnique({
       where: { id: workspaceId },
     });
 
@@ -917,7 +918,7 @@ export class TemplatesService {
     }
 
     // Check if workspace already has lead stages
-    const existingStages = await this.prisma.leadStage.findMany({
+    const existingStages = await this.tenantPrisma.client.leadStage.findMany({
       where: {
         workspaceId,
         isDeleted: false,
@@ -938,7 +939,7 @@ export class TemplatesService {
 
     try {
       // Create stages from template using transaction for consistency
-      const createdStages = await this.prisma.$transaction(async (prisma) => {
+      const createdStages = await this.tenantPrisma.client.$transaction(async (prisma) => {
         const stages = [];
 
         for (const stageTemplate of template.leadStages) {

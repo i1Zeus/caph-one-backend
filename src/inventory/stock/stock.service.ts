@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   ConflictException,
@@ -14,10 +15,10 @@ import { Stock, StockStatus } from './entities/stock.entity';
 
 @Injectable()
 export class StockService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   private async calculateStockQuantity(stockId: number): Promise<number> {
-    const trackings = await this.prisma.tracking.findMany({
+    const trackings = await this.tenantPrisma.client.tracking.findMany({
       where: {
         stockId,
         isActive: true,
@@ -62,7 +63,7 @@ export class StockService {
 
   private async getBaseUnitForProduct(productId: number): Promise<any> {
     // البحث عن الوحدة الأساسية للمنتج
-    const product = await this.prisma.product.findUnique({
+    const product = await this.tenantPrisma.client.product.findUnique({
       where: { id: productId },
       include: {
         salesUnit: {
@@ -82,7 +83,7 @@ export class StockService {
 
     // البحث عن الوحدة الأساسية في نفس فئة وحدة البيع
     if (product.salesUnit) {
-      const baseUnit = await this.prisma.unit.findFirst({
+      const baseUnit = await this.tenantPrisma.client.unit.findFirst({
         where: {
           categoryId: product.salesUnit.categoryId,
           type: 'MAIN',
@@ -93,7 +94,7 @@ export class StockService {
 
     // إذا لم توجد وحدة بيع، البحث في فئة وحدة الشراء
     if (product.purchaseUnit) {
-      const baseUnit = await this.prisma.unit.findFirst({
+      const baseUnit = await this.tenantPrisma.client.unit.findFirst({
         where: {
           categoryId: product.purchaseUnit.categoryId,
           type: 'MAIN',
@@ -157,7 +158,7 @@ export class StockService {
 
   async create(createStockDto: CreateStockDto): Promise<Stock> {
     // التحقق من وجود المنتج
-    const product = await this.prisma.product.findUnique({
+    const product = await this.tenantPrisma.client.product.findUnique({
       where: { id: createStockDto.productId },
       include: {
         salesUnit: true,
@@ -175,7 +176,7 @@ export class StockService {
     }
 
     // التحقق من وجود المخزن
-    const warehouse = await this.prisma.warehouse.findUnique({
+    const warehouse = await this.tenantPrisma.client.warehouse.findUnique({
       where: { id: createStockDto.warehouseId },
     });
 
@@ -185,7 +186,7 @@ export class StockService {
 
     // التحقق من وجود وحدة التخزين إذا تم تحديدها
     if (createStockDto.tracking.storageUnitId) {
-      const storageUnit = await this.prisma.unit.findUnique({
+      const storageUnit = await this.tenantPrisma.client.unit.findUnique({
         where: { id: createStockDto.tracking.storageUnitId },
       });
 
@@ -197,7 +198,7 @@ export class StockService {
     // التحقق من صحة بيانات التتبع
     this.validateTrackingData(createStockDto.tracking);
 
-    return await this.prisma.$transaction(async (prisma) => {
+    return await this.tenantPrisma.client.$transaction(async (prisma) => {
       // البحث عن مخزون موجود للمنتج في نفس المخزن
       let stock = await prisma.stock.findFirst({
         where: {
@@ -405,7 +406,7 @@ export class StockService {
 
     // If quantity-based filters are applied, fetch ALL stocks first (no pagination at DB level)
     // because quantity is calculated from trackings and filtering must happen after transformation
-    const stocks = await this.prisma.stock.findMany({
+    const stocks = await this.tenantPrisma.client.stock.findMany({
       where,
       include: {
         product: {
@@ -471,7 +472,7 @@ export class StockService {
     } else {
       // Already paginated from DB, get total count
       paginatedStocks = filteredStocks;
-      total = await this.prisma.stock.count({ where });
+      total = await this.tenantPrisma.client.stock.count({ where });
     }
 
     return {
@@ -486,7 +487,7 @@ export class StockService {
   }
 
   async findOne(id: number): Promise<Stock> {
-    const stock = await this.prisma.stock.findUnique({
+    const stock = await this.tenantPrisma.client.stock.findUnique({
       where: { id },
       include: {
         product: {
@@ -518,7 +519,7 @@ export class StockService {
     productId: number,
     warehouseId: number,
   ): Promise<Stock | null> {
-    const stock = await this.prisma.stock.findFirst({
+    const stock = await this.tenantPrisma.client.stock.findFirst({
       where: {
         productId,
         warehouseId,
@@ -546,7 +547,7 @@ export class StockService {
   }
 
   async update(id: number, updateStockDto: UpdateStockDto): Promise<Stock> {
-    const stock = await this.prisma.stock.findUnique({
+    const stock = await this.tenantPrisma.client.stock.findUnique({
       where: { id },
     });
 
@@ -556,7 +557,7 @@ export class StockService {
 
     // التحقق من المنتج إذا تم تغييره
     if (updateStockDto.productId) {
-      const product = await this.prisma.product.findUnique({
+      const product = await this.tenantPrisma.client.product.findUnique({
         where: { id: updateStockDto.productId },
       });
 
@@ -567,7 +568,7 @@ export class StockService {
 
     // التحقق من المخزن إذا تم تغييره
     if (updateStockDto.warehouseId) {
-      const warehouse = await this.prisma.warehouse.findUnique({
+      const warehouse = await this.tenantPrisma.client.warehouse.findUnique({
         where: { id: updateStockDto.warehouseId },
       });
 
@@ -578,7 +579,7 @@ export class StockService {
 
     // التحقق من عدم وجود مخزون آخر للمنتج في المخزن الجديد
     if (updateStockDto.productId && updateStockDto.warehouseId) {
-      const existingStock = await this.prisma.stock.findFirst({
+      const existingStock = await this.tenantPrisma.client.stock.findFirst({
         where: {
           productId: updateStockDto.productId,
           warehouseId: updateStockDto.warehouseId,
@@ -593,7 +594,7 @@ export class StockService {
       }
     }
 
-    const updatedStock = await this.prisma.stock.update({
+    const updatedStock = await this.tenantPrisma.client.stock.update({
       where: { id },
       data: {
         ...updateStockDto,
@@ -618,7 +619,7 @@ export class StockService {
   }
 
   async remove(id: number): Promise<void> {
-    const stock = await this.prisma.stock.findUnique({
+    const stock = await this.tenantPrisma.client.stock.findUnique({
       where: { id },
     });
 
@@ -627,7 +628,7 @@ export class StockService {
     }
 
     // التحقق من وجود حركات للمخزون
-    const transactionsCount = await this.prisma.warehouseTransaction.count({
+    const transactionsCount = await this.tenantPrisma.client.warehouseTransaction.count({
       where: {
         OR: [
           {
@@ -654,7 +655,7 @@ export class StockService {
       throw new ConflictException('لا يمكن حذف المخزون لأنه يحتوي على حركات');
     }
 
-    await this.prisma.stock.delete({
+    await this.tenantPrisma.client.stock.delete({
       where: { id },
     });
   }
@@ -671,7 +672,7 @@ export class StockService {
     }
 
     // التحقق من وجود المنتج
-    const product = await this.prisma.product.findUnique({
+    const product = await this.tenantPrisma.client.product.findUnique({
       where: { id: productId },
     });
 
@@ -681,8 +682,8 @@ export class StockService {
 
     // التحقق من وجود المخازن
     const [fromWarehouse, toWarehouse] = await Promise.all([
-      this.prisma.warehouse.findUnique({ where: { id: fromWarehouseId } }),
-      this.prisma.warehouse.findUnique({ where: { id: toWarehouseId } }),
+      this.tenantPrisma.client.warehouse.findUnique({ where: { id: fromWarehouseId } }),
+      this.tenantPrisma.client.warehouse.findUnique({ where: { id: toWarehouseId } }),
     ]);
 
     if (!fromWarehouse) {
@@ -694,7 +695,7 @@ export class StockService {
     }
 
     // استخدام transaction لضمان التطابق
-    const result = await this.prisma.$transaction(async (prisma) => {
+    const result = await this.tenantPrisma.client.$transaction(async (prisma) => {
       // الحصول على المخزون المصدر
       const fromStock = await prisma.stock.findFirst({
         where: { productId, warehouseId: fromWarehouseId },
@@ -795,8 +796,8 @@ export class StockService {
 
     // التحقق من وجود المنتج والمخزن
     const [product, warehouse] = await Promise.all([
-      this.prisma.product.findUnique({ where: { id: productId } }),
-      this.prisma.warehouse.findUnique({ where: { id: warehouseId } }),
+      this.tenantPrisma.client.product.findUnique({ where: { id: productId } }),
+      this.tenantPrisma.client.warehouse.findUnique({ where: { id: warehouseId } }),
     ]);
 
     if (!product) {
@@ -807,7 +808,7 @@ export class StockService {
       throw new NotFoundException('المخزن غير موجود');
     }
 
-    const result = await this.prisma.$transaction(async (prisma) => {
+    const result = await this.tenantPrisma.client.$transaction(async (prisma) => {
       // الحصول على المخزون الحالي
       let stock = await prisma.stock.findFirst({
         where: { productId, warehouseId },
@@ -949,14 +950,14 @@ export class StockService {
 
   async getStockStats() {
     const [totalStocks, totalProducts, totalWarehouses] = await Promise.all([
-      this.prisma.stock.count(),
-      this.prisma.stock
+      this.tenantPrisma.client.stock.count(),
+      this.tenantPrisma.client.stock
         .groupBy({
           by: ['productId'],
           _count: { productId: true },
         })
         .then((result) => result.length),
-      this.prisma.stock
+      this.tenantPrisma.client.stock
         .groupBy({
           by: ['warehouseId'],
           _count: { warehouseId: true },
@@ -965,7 +966,7 @@ export class StockService {
     ]);
 
     // حساب الإحصائيات من Tracking
-    const stocksWithTrackings = await this.prisma.stock.findMany({
+    const stocksWithTrackings = await this.tenantPrisma.client.stock.findMany({
       include: {
         product: {
           select: {
@@ -1030,7 +1031,7 @@ export class StockService {
 
   async getStockAlerts() {
     // Get all stocks - we need to check both stock.reorderLevel AND product.minStockAlert
-    const stocks = await this.prisma.stock.findMany({
+    const stocks = await this.tenantPrisma.client.stock.findMany({
       where: {
         OR: [
           { reorderLevel: { gt: 0 } },
@@ -1082,7 +1083,7 @@ export class StockService {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + daysUntilExpiry);
 
-    const trackings = await this.prisma.tracking.findMany({
+    const trackings = await this.tenantPrisma.client.tracking.findMany({
       where: {
         isActive: true,
         isDeleted: false,

@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { AccountingModule } from './accounting/accounting.module';
 import { AiModule } from './ai/ai.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
+import { TenantGuard } from './auth';
 import { CrmModule } from './crm/crm.module';
 import { FilesModule } from './files/files.module';
 import { GithubModule } from './github/github.module';
@@ -44,6 +46,12 @@ import { WorkspacesModule } from './workspaces/workspaces.module';
     SalesModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: TenantGuard,
+    },
+  ],
 })
 export class AppModule {}

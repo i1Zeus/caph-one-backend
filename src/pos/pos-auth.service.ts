@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -8,13 +9,13 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class PosAuthService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   /**
    * Authenticate employee with PIN and employeeId
    */
   async authenticateWithPin(employeeId: string, pin: string) {
-    const employee = await this.prisma.employee.findFirst({
+    const employee = await this.tenantPrisma.client.employee.findFirst({
       where: {
         id: employeeId,
         posPin: pin,
@@ -44,7 +45,7 @@ export class PosAuthService {
    * Lock a POS terminal
    */
   async lockPOS(posId: number, employeeId: string) {
-    const pos = await this.prisma.pOS.findUnique({
+    const pos = await this.tenantPrisma.client.pOS.findUnique({
       where: { id: posId },
     });
 
@@ -56,7 +57,7 @@ export class PosAuthService {
       throw new BadRequestException('POS terminal is deleted');
     }
 
-    await this.prisma.pOS.update({
+    await this.tenantPrisma.client.pOS.update({
       where: { id: posId },
       data: {
         isLocked: true,
@@ -72,7 +73,7 @@ export class PosAuthService {
    * Unlock POS with PIN and employeeId
    */
   async unlockPOS(posId: number, employeeId: string, pin: string) {
-    const pos = await this.prisma.pOS.findUnique({
+    const pos = await this.tenantPrisma.client.pOS.findUnique({
       where: { id: posId },
     });
 
@@ -88,7 +89,7 @@ export class PosAuthService {
     const employee = await this.authenticateWithPin(employeeId, pin);
 
     // Unlock POS
-    await this.prisma.pOS.update({
+    await this.tenantPrisma.client.pOS.update({
       where: { id: posId },
       data: {
         isLocked: false,
@@ -107,7 +108,7 @@ export class PosAuthService {
    * Check if POS is locked
    */
   async isPOSLocked(posId: number) {
-    const pos = await this.prisma.pOS.findUnique({
+    const pos = await this.tenantPrisma.client.pOS.findUnique({
       where: { id: posId },
       select: {
         isLocked: true,

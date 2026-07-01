@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -9,7 +10,7 @@ import { CreateEmployeeExitDto, UpdateEmployeeExitDto } from './dto';
 
 @Injectable()
 export class EmployeeExitService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private tenantPrisma: TenantPrismaService) {}
 
   async create(
     createDto: CreateEmployeeExitDto,
@@ -17,7 +18,7 @@ export class EmployeeExitService {
   ): Promise<EmployeeExit> {
     try {
       // Verify employee exists and doesn't have an exit record
-      const employee = await this.prisma.employee.findUnique({
+      const employee = await this.tenantPrisma.client.employee.findUnique({
         where: { id: createDto.employeeId, isDeleted: false },
         include: { exit: true },
       });
@@ -31,7 +32,7 @@ export class EmployeeExitService {
       }
 
       // Create exit record
-      const exit = await this.prisma.employeeExit.create({
+      const exit = await this.tenantPrisma.client.employeeExit.create({
         data: {
           employeeId: createDto.employeeId,
           exitType: createDto.exitType,
@@ -68,7 +69,7 @@ export class EmployeeExitService {
       });
 
       // Update employee status to TERMINATED
-      await this.prisma.employee.update({
+      await this.tenantPrisma.client.employee.update({
         where: { id: createDto.employeeId },
         data: {
           employmentStatus: 'TERMINATED',
@@ -89,7 +90,7 @@ export class EmployeeExitService {
   }
 
   async findAll() {
-    return this.prisma.employeeExit.findMany({
+    return this.tenantPrisma.client.employeeExit.findMany({
       where: { isDeleted: false },
       include: {
         employee: {
@@ -116,7 +117,7 @@ export class EmployeeExitService {
   }
 
   async findOne(id: string): Promise<EmployeeExit> {
-    const exit = await this.prisma.employeeExit.findUnique({
+    const exit = await this.tenantPrisma.client.employeeExit.findUnique({
       where: { id, isDeleted: false },
       include: {
         employee: {
@@ -155,7 +156,7 @@ export class EmployeeExitService {
   }
 
   async findByEmployee(employeeId: string): Promise<EmployeeExit | null> {
-    return this.prisma.employeeExit.findUnique({
+    return this.tenantPrisma.client.employeeExit.findUnique({
       where: { employeeId, isDeleted: false },
       include: {
         processedByUser: {
@@ -175,7 +176,7 @@ export class EmployeeExitService {
   ): Promise<EmployeeExit> {
     // const exit = await this.findOne(id);
 
-    const updatedExit = await this.prisma.employeeExit.update({
+    const updatedExit = await this.tenantPrisma.client.employeeExit.update({
       where: { id },
       data: {
         exitType: updateDto.exitType,
@@ -237,7 +238,7 @@ export class EmployeeExitService {
   ): Promise<EmployeeExit> {
     // const exit = await this.findOne(id);
 
-    return await this.prisma.employeeExit.update({
+    return await this.tenantPrisma.client.employeeExit.update({
       where: { id },
       data: checklist,
       include: {
@@ -258,7 +259,7 @@ export class EmployeeExitService {
   ): Promise<EmployeeExit> {
     // const exit = await this.findOne(id);
 
-    return await this.prisma.employeeExit.update({
+    return await this.tenantPrisma.client.employeeExit.update({
       where: { id },
       data: {
         finalSettlement: settlement.finalSettlement,
@@ -286,7 +287,7 @@ export class EmployeeExitService {
   ): Promise<EmployeeExit> {
     // const exit = await this.findOne(id);
 
-    return await this.prisma.employeeExit.update({
+    return await this.tenantPrisma.client.employeeExit.update({
       where: { id },
       data: {
         exitInterviewDone: interview.exitInterviewDone,
@@ -308,7 +309,7 @@ export class EmployeeExitService {
     const exit = await this.findOne(id);
 
     // Restore employee status to ACTIVE
-    await this.prisma.employee.update({
+    await this.tenantPrisma.client.employee.update({
       where: { id: exit.employeeId },
       data: {
         employmentStatus: 'ACTIVE',
@@ -316,7 +317,7 @@ export class EmployeeExitService {
       },
     });
 
-    return await this.prisma.employeeExit.update({
+    return await this.tenantPrisma.client.employeeExit.update({
       where: { id },
       data: { isDeleted: true },
     });
@@ -333,11 +334,11 @@ export class EmployeeExitService {
       avgServiceYears,
     ] = await Promise.all([
       // Total exits
-      this.prisma.employeeExit.count({
+      this.tenantPrisma.client.employeeExit.count({
         where: { isDeleted: false },
       }),
       // This month
-      this.prisma.employeeExit.count({
+      this.tenantPrisma.client.employeeExit.count({
         where: {
           isDeleted: false,
           exitDate: {
@@ -346,7 +347,7 @@ export class EmployeeExitService {
         },
       }),
       // This year
-      this.prisma.employeeExit.count({
+      this.tenantPrisma.client.employeeExit.count({
         where: {
           isDeleted: false,
           exitDate: {
@@ -355,13 +356,13 @@ export class EmployeeExitService {
         },
       }),
       // By exit type
-      this.prisma.employeeExit.groupBy({
+      this.tenantPrisma.client.employeeExit.groupBy({
         by: ['exitType'],
         where: { isDeleted: false },
         _count: { exitType: true },
       }),
       // Pending clearance
-      this.prisma.employeeExit.count({
+      this.tenantPrisma.client.employeeExit.count({
         where: {
           isDeleted: false,
           OR: [
@@ -374,7 +375,7 @@ export class EmployeeExitService {
         },
       }),
       // Pending settlement
-      this.prisma.employeeExit.count({
+      this.tenantPrisma.client.employeeExit.count({
         where: {
           isDeleted: false,
           settlementPaid: false,
@@ -382,7 +383,7 @@ export class EmployeeExitService {
         },
       }),
       // Calculate average service years
-      this.prisma.employeeExit.findMany({
+      this.tenantPrisma.client.employeeExit.findMany({
         where: { isDeleted: false },
         select: {
           exitDate: true,
@@ -428,7 +429,7 @@ export class EmployeeExitService {
   }
 
   async getClearancePending() {
-    return this.prisma.employeeExit.findMany({
+    return this.tenantPrisma.client.employeeExit.findMany({
       where: {
         isDeleted: false,
         OR: [
@@ -456,7 +457,7 @@ export class EmployeeExitService {
   }
 
   async getSettlementPending() {
-    return this.prisma.employeeExit.findMany({
+    return this.tenantPrisma.client.employeeExit.findMany({
       where: {
         isDeleted: false,
         settlementPaid: false,

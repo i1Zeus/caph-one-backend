@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -14,7 +15,7 @@ import { PosSessionsService } from './pos-sessions.service';
 @Injectable()
 export class PosTerminalsService {
   constructor(
-    private prisma: PrismaService,
+    private prisma: PrismaService, private tenantPrisma: TenantPrismaService,
     private posSessionsService: PosSessionsService,
   ) {}
 
@@ -33,7 +34,7 @@ export class PosTerminalsService {
 
     if (hasArabic) {
       // For Arabic names, use sequential numbering: pos-1, pos-2, etc.
-      const existingCount = await this.prisma.pOS.count({
+      const existingCount = await this.tenantPrisma.client.pOS.count({
         where: {
           isDeleted: false,
           ...(excludeId ? { id: { not: excludeId } } : {}),
@@ -45,7 +46,7 @@ export class PosTerminalsService {
 
       // Ensure uniqueness
       while (true) {
-        const existing = await this.prisma.pOS.findFirst({
+        const existing = await this.tenantPrisma.client.pOS.findFirst({
           where: {
             slug,
             isDeleted: false,
@@ -88,7 +89,7 @@ export class PosTerminalsService {
       let uniqueSlug = slug;
       let counter = 1;
       while (true) {
-        const existing = await this.prisma.pOS.findFirst({
+        const existing = await this.tenantPrisma.client.pOS.findFirst({
           where: {
             slug: uniqueSlug,
             isDeleted: false,
@@ -116,7 +117,7 @@ export class PosTerminalsService {
    */
   async createTerminal(createDto: CreatePosTerminalDto) {
     // Check for duplicate name
-    const existing = await this.prisma.pOS.findFirst({
+    const existing = await this.tenantPrisma.client.pOS.findFirst({
       where: {
         name: createDto.name,
         isDeleted: false,
@@ -132,7 +133,7 @@ export class PosTerminalsService {
     // Generate slug automatically from name
     const slug = await this.generateSlug(createDto.name);
 
-    return this.prisma.pOS.create({
+    return this.tenantPrisma.client.pOS.create({
       data: {
         name: createDto.name,
         slug,
@@ -147,7 +148,7 @@ export class PosTerminalsService {
    * Update a POS terminal
    */
   async updateTerminal(id: number, updateDto: UpdatePosTerminalDto) {
-    const pos = await this.prisma.pOS.findUnique({
+    const pos = await this.tenantPrisma.client.pOS.findUnique({
       where: { id },
     });
 
@@ -157,7 +158,7 @@ export class PosTerminalsService {
 
     // Check for duplicate name if updating name
     if (updateDto.name) {
-      const existing = await this.prisma.pOS.findFirst({
+      const existing = await this.tenantPrisma.client.pOS.findFirst({
         where: {
           name: updateDto.name,
           id: { not: id },
@@ -173,7 +174,7 @@ export class PosTerminalsService {
 
       // Regenerate slug when name changes
       const newSlug = await this.generateSlug(updateDto.name, id);
-      return this.prisma.pOS.update({
+      return this.tenantPrisma.client.pOS.update({
         where: { id },
         data: {
           ...updateDto,
@@ -182,7 +183,7 @@ export class PosTerminalsService {
       });
     }
 
-    return this.prisma.pOS.update({
+    return this.tenantPrisma.client.pOS.update({
       where: { id },
       data: updateDto,
     });
@@ -192,7 +193,7 @@ export class PosTerminalsService {
    * Get a single POS terminal
    */
   async getTerminal(id: number) {
-    const pos = await this.prisma.pOS.findUnique({
+    const pos = await this.tenantPrisma.client.pOS.findUnique({
       where: { id },
       include: {
         sessions: {
@@ -223,7 +224,7 @@ export class PosTerminalsService {
    * Get all POS terminals
    */
   async getAllTerminals() {
-    return this.prisma.pOS.findMany({
+    return this.tenantPrisma.client.pOS.findMany({
       where: { isDeleted: false },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -250,7 +251,7 @@ export class PosTerminalsService {
    * Delete a POS terminal (soft delete)
    */
   async deleteTerminal(id: number) {
-    const pos = await this.prisma.pOS.findUnique({
+    const pos = await this.tenantPrisma.client.pOS.findUnique({
       where: { id },
       include: {
         sessions: {
@@ -272,7 +273,7 @@ export class PosTerminalsService {
       );
     }
 
-    await this.prisma.pOS.update({
+    await this.tenantPrisma.client.pOS.update({
       where: { id },
       data: { isDeleted: true },
     });
@@ -285,7 +286,7 @@ export class PosTerminalsService {
    */
   async getTerminalSessions(id: number, filters: SessionQueryDto) {
     // Verify terminal exists
-    const terminal = await this.prisma.pOS.findUnique({
+    const terminal = await this.tenantPrisma.client.pOS.findUnique({
       where: { id },
       select: { id: true, name: true, isDeleted: true },
     });

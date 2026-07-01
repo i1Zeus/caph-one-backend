@@ -1,3 +1,4 @@
+import { TenantPrismaService } from 'src/prisma/tenant-prisma.service';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -25,7 +26,7 @@ export class FilesService {
   private cdnUrl: string;
 
   constructor(
-    private prisma: PrismaService,
+    private prisma: PrismaService, private tenantPrisma: TenantPrismaService,
     private configService: ConfigService,
     private permissionsService: DynamicPermissionsService,
   ) {
@@ -120,7 +121,7 @@ export class FilesService {
       }
 
       // Save file metadata to database
-      const fileRecord = await this.prisma.file.create({
+      const fileRecord = await this.tenantPrisma.client.file.create({
         data: fileData,
         include: {
           uploadedBy: {
@@ -142,7 +143,7 @@ export class FilesService {
   }
 
   async getFile(id: string) {
-    const file = await this.prisma.file.findFirst({
+    const file = await this.tenantPrisma.client.file.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -188,7 +189,7 @@ export class FilesService {
       whereClause.commentId = entityId;
     }
 
-    return this.prisma.file.findMany({
+    return this.tenantPrisma.client.file.findMany({
       where: whereClause,
       include: {
         uploadedBy: {
@@ -206,7 +207,7 @@ export class FilesService {
   }
 
   async updateFile(id: string, updateFileDto: UpdateFileDto, userId: string) {
-    const file = await this.prisma.file.findFirst({
+    const file = await this.tenantPrisma.client.file.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -226,7 +227,7 @@ export class FilesService {
     }
 
     // Update file metadata
-    const updatedFile = await this.prisma.file.update({
+    const updatedFile = await this.tenantPrisma.client.file.update({
       where: { id },
       data: {
         originalName: updateFileDto.originalName || file.originalName,
@@ -248,7 +249,7 @@ export class FilesService {
   }
 
   async deleteFile(id: string, userId: string) {
-    const file = await this.prisma.file.findFirst({
+    const file = await this.tenantPrisma.client.file.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -277,7 +278,7 @@ export class FilesService {
       await this.s3Client.send(deleteCommand);
 
       // Soft delete from database
-      await this.prisma.file.update({
+      await this.tenantPrisma.client.file.update({
         where: { id },
         data: { isDeleted: true },
       });
@@ -296,7 +297,7 @@ export class FilesService {
     }
 
     // Get all files to check permissions
-    const files = await this.prisma.file.findMany({
+    const files = await this.tenantPrisma.client.file.findMany({
       where: {
         id: { in: fileIds },
         isDeleted: false,
@@ -332,7 +333,7 @@ export class FilesService {
       await Promise.all(deletePromises);
 
       // Soft delete from database
-      await this.prisma.file.updateMany({
+      await this.tenantPrisma.client.file.updateMany({
         where: {
           id: { in: fileIds },
         },
@@ -401,8 +402,8 @@ export class FilesService {
     }
 
     const [totalFiles, totalSize] = await Promise.all([
-      this.prisma.file.count({ where: whereClause }),
-      this.prisma.file.aggregate({
+      this.tenantPrisma.client.file.count({ where: whereClause }),
+      this.tenantPrisma.client.file.aggregate({
         where: whereClause,
         _sum: {
           size: true,
@@ -505,7 +506,7 @@ export class FilesService {
 
     // Get files and total count
     const [files, totalCount] = await Promise.all([
-      this.prisma.file.findMany({
+      this.tenantPrisma.client.file.findMany({
         where: whereClause,
         include: {
           uploadedBy: {
@@ -556,7 +557,7 @@ export class FilesService {
         skip,
         take: validLimit,
       }),
-      this.prisma.file.count({ where: whereClause }),
+      this.tenantPrisma.client.file.count({ where: whereClause }),
     ]);
 
     const totalPages = Math.ceil(totalCount / validLimit);
