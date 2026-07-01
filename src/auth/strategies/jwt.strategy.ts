@@ -23,6 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       phone: payload.phone,
       tenantId: payload.tenantId, // Scoped organization ID
       isSuperAdmin: payload.isSuperAdmin === true, // SuperAdmin flag
+      role: payload.role, // User's system-wide role
       id: payload.sub, // Also provide id for backward compatibility
     };
   }

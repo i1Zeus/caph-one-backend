@@ -8,15 +8,19 @@ datasource db {
 }
 
 model Organization {
-  id            String   @id @default(uuid())
-  name          String
-  slug          String   @unique
-  logo          String?
-  maxWorkspaces Int      @default(3) // SuperAdmin controls this per org
-  isActive      Boolean  @default(true)
-  isDeleted     Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String           @id @default(uuid())
+  name             String
+  slug             String           @unique
+  subdomain        String           @unique
+  subscriptionTier SubscriptionTier @default(FREE)
+  maxUsers         Int              @default(10)
+  logo             String?
+  maxWorkspaces    Int              @default(3) // SuperAdmin controls this per org
+  isActive         Boolean          @default(true)
+  isDeleted        Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  deletedAt        DateTime?
 
   // Relations
   users                    User[]
@@ -155,8 +159,13 @@ model User {
   userRoles                     UserRole[]              @relation("UserRoles")
 
   isSuperAdmin   Boolean       @default(false)
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role           UserRoleType  @default(USER)
+  firstName      String?
+  lastName       String?
+  lastLogin      DateTime?
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  isActive       Boolean       @default(true)
 
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -2326,3 +2335,17 @@ model SaleDelivery {
   @@index([status])
   @@map("sale_deliveries")
 }
+
+enum UserRoleType {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  USER
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  ENTERPRISE
+}
+

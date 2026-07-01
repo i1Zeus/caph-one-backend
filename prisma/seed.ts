@@ -142,12 +142,16 @@ async function main() {
     where: { slug: 'default' },
     update: {
       name: 'Default Organization',
+      subdomain: 'default',
       maxWorkspaces: 5,
     },
     create: {
       name: 'Default Organization',
       slug: 'default',
+      subdomain: 'default',
       maxWorkspaces: 5,
+      subscriptionTier: 'FREE',
+      maxUsers: 10,
     },
   });
   console.log(`✅ Created/Updated organization: ${defaultOrg.name}`);
@@ -164,6 +168,8 @@ async function main() {
       password: hashedPassword, // Update password if user exists
       isDeleted: false, // Restore user if it was soft-deleted
       isSuperAdmin: true,
+      role: 'SUPER_ADMIN',
+      organizationId: defaultOrg.id,
     },
     create: {
       name: 'Super Admin',
@@ -172,6 +178,10 @@ async function main() {
       phone: '+9647730281556', // Required field, using placeholder
       isDeleted: false,
       isSuperAdmin: true,
+      role: 'SUPER_ADMIN',
+      organizationId: defaultOrg.id,
+      firstName: 'Super',
+      lastName: 'Admin',
     },
   });
 

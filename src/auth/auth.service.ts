@@ -63,6 +63,7 @@ export class AuthService {
       phone: user.phone,
       tenantId: user.organizationId,
       isSuperAdmin: user.isSuperAdmin,
+      role: user.role,
       roles: userRoles.map((ur) => ({
         id: ur.role.id,
         name: ur.role.name,
@@ -81,6 +82,7 @@ export class AuthService {
         phone: user.phone,
         isSuperAdmin: user.isSuperAdmin,
         tenantId: user.organizationId,
+        role: user.role,
         roles: payload.roles,
         permissions: userPermissions,
       },

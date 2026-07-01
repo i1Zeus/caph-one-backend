@@ -22,6 +22,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { TemplatesModule } from './templates/templates.module';
 import { UsersModule } from './users/users.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
+import { SuperAdminModule } from './modules/super-admin/super-admin.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { WorkspacesModule } from './workspaces/workspaces.module';
     InventoryModule,
     PosModule,
     SalesModule,
+    SuperAdminModule,
   ],
   controllers: [AppController],
   providers: [

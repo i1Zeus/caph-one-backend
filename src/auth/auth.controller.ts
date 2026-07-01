@@ -41,6 +41,23 @@ export class AuthController {
   @Public() // Public for initial setup
   async adminSeed() {
     try {
+      // Find or create default organization
+      let defaultOrg = await this.prisma.organization.findFirst({
+        where: { slug: 'default' },
+      });
+      if (!defaultOrg) {
+        defaultOrg = await this.prisma.organization.create({
+          data: {
+            name: 'Default Organization',
+            slug: 'default',
+            subdomain: 'default',
+            maxWorkspaces: 5,
+            subscriptionTier: 'FREE',
+            maxUsers: 10,
+          },
+        });
+      }
+
       // Create admin user
       const adminUser = await this.prisma.user.create({
         data: {
@@ -48,6 +65,9 @@ export class AuthController {
           email: 'admin@admin.com',
           password: bcrypt.hashSync('admin', 10),
           phone: '9647736000954',
+          organizationId: defaultOrg.id,
+          role: 'SUPER_ADMIN',
+          isSuperAdmin: true,
         },
       });
 

@@ -26,6 +26,7 @@ export class AdminOrganizationsService {
       data: {
         name: dto.name,
         slug: dto.slug,
+        subdomain: dto.slug,
         logo: dto.logo,
         maxWorkspaces: dto.maxWorkspaces,
       },
